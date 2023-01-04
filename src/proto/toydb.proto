@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package toydb;
+
+message StatusRequest {
+};
+
+message StatusResponse {
+  string id = 1;
+  string version = 2;
+  int64 time = 3;
+};
+
+service ToyDB {
+  rpc Status(StatusRequest) returns (StatusResponse) {
+  };
+}

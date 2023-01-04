@@ -4,29 +4,27 @@
 
 #ifndef MYTOYDB_KVSTORE_H
 #define MYTOYDB_KVSTORE_H
-#include "status.h"
+#include <map>
+#include <absl/status/status.h>
 
-class kvstore {
-public:
-  kvstore() : _data() {}
+using ::absl::Status;
 
-  ~kvstore() {}
+namespace toydb {
+    class kvstore {
+    public:
+        kvstore() : data_() {}
 
-  void delete (std::string &key) { data_.erase(key); }
+        ~kvstore() {}
 
-  Status get(std::string &key, std::string *value) {
-    auto iter = data_.find(key);
-    if (iter == data_.end()) {
-      return Status::NotFound();
-    }
-    value->assign(iter->second.data(), iter->second.size());
-    return Status();
-  }
+        void Delete(std::string &key) { data_.erase(key); }
 
-  void put(std::string &key, std::string : value) { data_[key] = value; }
+        Status Get(std::string &key, std::string *value);
 
-private:
-  std::map<std::string, std::string> data_;
-};
+        void Put(std::string &key, std::string* value) { data_[key] = value; }
+
+    private:
+        std::map<std::string, std::string> data_;
+    };
+}
 
 #endif // MYTOYDB_KVSTORE_H

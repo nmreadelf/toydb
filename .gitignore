@@ -1,0 +1,3 @@
+# ignore proto generate file
+src/proto/*.pb.cc
+src/proto/*.pb.h
