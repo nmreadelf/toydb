@@ -4,21 +4,22 @@
 
 #ifndef MYTOYDB_SERVICE_H
 #define MYTOYDB_SERVICE_H
-#include <string>
 #include "proto/toydb.grpc.pb.h"
+#include <string>
 
 using ::grpc::ServerContext;
 
 namespace toydb {
 class service final : public ToyDB::Service {
-    public:
-        service(const std::string id): id_(id) {};
+public:
+  service(const std::string id) : id_(id){};
 
-    ::grpc::Status Status(ServerContext* ctx, const StatusRequest* req, StatusResponse* resp);
+  ::grpc::Status Status(ServerContext *ctx, const StatusRequest *req,
+                        StatusResponse *resp);
 
-    private:
-        std::string id_;
-    };
-}
+private:
+  std::string id_;
+};
+} // namespace toydb
 
-#endif //MYTOYDB_SERVICE_H
+#endif // MYTOYDB_SERVICE_H

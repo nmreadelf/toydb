@@ -1,9 +1,12 @@
 cmake_minimum_required(VERSION 3.5.1)
 project(MyToyDB C CXX)
+find_path(PROTO_DEF "google/protobuf/port_def.inc")
+find_program(_PROTOBUF_PROTOC "protoc")
+find_program(_GRPC_CPP_PLUGIN_EXECUTABLE "grpc_cpp_plugin")
+include_directories("${PROTO_DEF}")
 find_package(gRPC CONFIG REQUIRED)
 find_package(absl CONFIG REQUIRED)
-find_path(PROTO_DEF "google/protobuf/port_def.inc")
-include_directories(${PROTO_DEF})
+find_package(GTest CONFIG REQUIRED)
 #find_package(modules CONFIG REQUIRED)
 #target_link_libraries(main PRIVATE gRPC::gpr gRPC::grpc gRPC::grpc++ gRPC::grpc++_alts)
 #target_link_libraries(main PRIVATE re2::re2 c-ares::cares)
@@ -38,6 +41,12 @@ target_link_libraries(td_grpc_proto
         ${_REFLECTION}
         ${_GRPC_GRPCPP}
         ${_PROTOBUF_LIBPROTOBUF})
+
+add_library(kv "${PROJECT_SOURCE_DIR}/src/kv.cc" "${PROJECT_SOURCE_DIR}/src/kv.h")
+target_link_libraries(kv absl::any)
+
+add_executable(kv_test "${PROJECT_SOURCE_DIR}/src/kv_test.cc" )
+target_link_libraries(kv_test kv GTest::gtest GTest::gtest_main absl::any absl::base absl::status)
 
 add_executable(server "${PROJECT_SOURCE_DIR}/src/bin/server.cc" "${PROJECT_SOURCE_DIR}/src/service/service.cc")
 target_link_libraries(server td_grpc_proto
