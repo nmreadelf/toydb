@@ -7,37 +7,38 @@ include_directories("${PROTO_DEF}")
 find_package(gRPC CONFIG REQUIRED)
 find_package(absl CONFIG REQUIRED)
 find_package(GTest CONFIG REQUIRED)
-#find_package(modules CONFIG REQUIRED)
-#target_link_libraries(main PRIVATE gRPC::gpr gRPC::grpc gRPC::grpc++ gRPC::grpc++_alts)
-#target_link_libraries(main PRIVATE re2::re2 c-ares::cares)
 
-# Generated sources
-set(td_proto_srcs "${PROJECT_SOURCE_DIR}/src/proto/toydb.pb.cc")
-set(td_proto_hdrs "${PROJECT_SOURCE_DIR}/src/proto/toydb.pb.h")
-set(td_grpc_srcs "${PROJECT_SOURCE_DIR}/src/proto/toydb.grpc.pb.cc")
-set(td_grpc_hdrs "${PROJECT_SOURCE_DIR}/src/proto/toydb.grpc.pb.h")
-
-# Proto file
-get_filename_component(td_proto "${PROJECT_SOURCE_DIR}/src/proto/toydb.proto" ABSOLUTE)
-get_filename_component(td_proto_path "${td_proto}" PATH)
-
-add_custom_command(
-        OUTPUT "${td_proto_srcs}" "${td_proto_hdrs}" "${td_grpc_srcs}" "${td_grpc_hdrs}"
-        COMMAND ${_PROTOBUF_PROTOC}
-        ARGS --grpc_out "${PROJECT_SOURCE_DIR}/src/proto/"
-        --cpp_out "${PROJECT_SOURCE_DIR}/src/proto/"
-        -I "${td_proto_path}"
-        --plugin=protoc-gen-grpc="${_GRPC_CPP_PLUGIN_EXECUTABLE}"
-        "${td_proto}"
-        DEPENDS "${td_proto}")
+# Generated proto sources
+set(proto_files "")
+function(generate_proto proto_name)
+    get_filename_component(_proto "${PROJECT_SOURCE_DIR}/src/proto/${proto_name}.proto" ABSOLUTE)
+    get_filename_component(_proto_path "${_proto}" PATH)
+    add_custom_command(OUTPUT
+            "${PROJECT_SOURCE_DIR}/src/proto/${proto_name}.pb.cc"
+            "${PROJECT_SOURCE_DIR}/src/proto/${proto_name}.pb.h"
+            "${PROJECT_SOURCE_DIR}/src/proto/${proto_name}.grpc.pb.cc"
+            "${PROJECT_SOURCE_DIR}/src/proto/${proto_name}.grpc.pb.h"
+            COMMAND ${_PROTOBUF_PROTOC}
+            ARGS --grpc_out "${PROJECT_SOURCE_DIR}/src/proto/"
+            --cpp_out "${PROJECT_SOURCE_DIR}/src/proto/"
+            -I "${_proto_path}"
+            --plugin=protoc-gen-grpc="${_GRPC_CPP_PLUGIN_EXECUTABLE}"
+            "${_proto}"
+            DEPENDS "${_proto}")
+    list(APPEND proto_files "${PROJECT_SOURCE_DIR}/src/proto/${proto_name}.pb.cc"
+            "${PROJECT_SOURCE_DIR}/src/proto/${proto_name}.grpc.pb.cc")
+    set(proto_files ${proto_files} PARENT_SCOPE)
+endfunction(generate_proto)
+generate_proto("raft")
+generate_proto("toydb")
 
 # Include generated *.pb.h files
 include_directories("${PROJECT_SOURCE_DIR}/src/proto/")
 include_directories("${PROJECT_SOURCE_DIR}/src")
 
 # hw_grpc_proto
-add_library(td_grpc_proto "${td_proto_srcs}" "${td_proto_hdrs}" "${td_grpc_srcs}" "${td_grpc_hdrs}")
-target_link_libraries(td_grpc_proto
+add_library(toydb_grpc_proto "${proto_files}")
+target_link_libraries(toydb_grpc_proto
         ${_REFLECTION}
         ${_GRPC_GRPCPP}
         ${_PROTOBUF_LIBPROTOBUF})
@@ -49,7 +50,7 @@ add_executable(kv_test "${PROJECT_SOURCE_DIR}/src/kv_test.cc" )
 target_link_libraries(kv_test kv GTest::gtest GTest::gtest_main absl::any absl::base absl::status)
 
 add_executable(toydb "${PROJECT_SOURCE_DIR}/src/bin/toydb.cc" "${PROJECT_SOURCE_DIR}/src/server/toydb_imp.cc")
-target_link_libraries(toydb td_grpc_proto
+target_link_libraries(toydb toydb_grpc_proto
         gRPC::gpr gRPC::grpc gRPC::grpc++ gRPC::grpc++_alts gRPC::grpc++_reflection
         absl::any absl::base absl::bits absl::city absl::flags absl::flags_parse absl::flags_config)
 #target_link_libraries(server PRIVATE re2::re2 c-ares::cares)
