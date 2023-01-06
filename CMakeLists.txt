@@ -48,8 +48,8 @@ target_link_libraries(kv absl::any)
 add_executable(kv_test "${PROJECT_SOURCE_DIR}/src/kv_test.cc" )
 target_link_libraries(kv_test kv GTest::gtest GTest::gtest_main absl::any absl::base absl::status)
 
-add_executable(server "${PROJECT_SOURCE_DIR}/src/bin/server.cc" "${PROJECT_SOURCE_DIR}/src/service/service.cc")
-target_link_libraries(server td_grpc_proto
+add_executable(toydb "${PROJECT_SOURCE_DIR}/src/bin/toydb.cc" "${PROJECT_SOURCE_DIR}/src/server/toydb_imp.cc")
+target_link_libraries(toydb td_grpc_proto
         gRPC::gpr gRPC::grpc gRPC::grpc++ gRPC::grpc++_alts gRPC::grpc++_reflection
         absl::any absl::base absl::bits absl::city absl::flags absl::flags_parse absl::flags_config)
 #target_link_libraries(server PRIVATE re2::re2 c-ares::cares)

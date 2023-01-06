@@ -12,7 +12,7 @@
 
 #include <iostream>
 
-#include "service/service.h"
+#include "server/toydb_imp.h"
 
 ABSL_FLAG(std::string, addr, "0.0.0.0:50051", "Server address for service.");
 ABSL_FLAG(std::string, id, "", "Server id for service.");
@@ -30,11 +30,11 @@ void RunServer() {
     id = addr;
     std::cout << "use addr flag as id flag" << std::endl;
   }
-  toydb::service service(id);
+  toydb::ToyDbServerImpl server_impl(id);
   // grpc::XdsServerBuilder xds_builder;
   // xds_builder.RegisterService(&service);
   grpc::ServerBuilder builder;
-  builder.RegisterService(&service);
+  builder.RegisterService(&server_impl);
   builder.AddListeningPort(addr, grpc::InsecureServerCredentials());
   // auto server = xds_builder.BuildAndStart();
   auto server = builder.BuildAndStart();

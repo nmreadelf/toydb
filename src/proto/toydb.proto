@@ -11,7 +11,37 @@ message StatusResponse {
   int64 time = 3;
 };
 
-service ToyDB {
+message GetRequest {
+  string key = 1;
+}
+
+message GetResponse {
+  string key = 1;
+  string value = 2;
+}
+
+message SetRequest {
+  string key = 1;
+  string value = 2;
+}
+
+message SetResponse {
+  string key = 1;
+  string value = 2;
+}
+
+// The main ToyDB service used by ToyDB clients.
+service ToyDBServer {
+  // Status asks the server for its status.
   rpc Status(StatusRequest) returns (StatusResponse) {
   };
+
+  // Get is a temporary key-value command.
+  rpc Get(GetRequest) returns (GetResponse) {
+  };
+
+  // Set is a temporary key-value command.
+  rpc Set(SetRequest) returns (SetResponse) {
+  };
+
 }
