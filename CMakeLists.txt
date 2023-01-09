@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.5.1)
 project(MyToyDB C CXX)
+set(CMAKE_CXX_STANDARD 20)
 find_path(PROTO_DEF "google/protobuf/port_def.inc")
 find_program(_PROTOBUF_PROTOC "protoc")
 find_program(_GRPC_CPP_PLUGIN_EXECUTABLE "grpc_cpp_plugin")
@@ -46,10 +47,13 @@ target_link_libraries(toydb_grpc_proto
 add_library(kv "${PROJECT_SOURCE_DIR}/src/kv.cc" "${PROJECT_SOURCE_DIR}/src/kv.h")
 target_link_libraries(kv absl::any)
 
+add_library(raft "${PROJECT_SOURCE_DIR}/src/raft/log.cc")
+target_link_libraries(raft absl::any)
+
 add_executable(kv_test "${PROJECT_SOURCE_DIR}/src/kv_test.cc" )
 target_link_libraries(kv_test kv GTest::gtest GTest::gtest_main absl::any absl::base absl::status)
 
-add_executable(toydb "${PROJECT_SOURCE_DIR}/src/bin/toydb.cc" "${PROJECT_SOURCE_DIR}/src/server/toydb_imp.cc")
+add_executable(toydb "${PROJECT_SOURCE_DIR}/src/bin/toydb.cc" "${PROJECT_SOURCE_DIR}/src/server/toydb_imp.cc" "${PROJECT_SOURCE_DIR}/src/server/raftserver_impl.cc" "${PROJECT_SOURCE_DIR}/src/client/raftserver_client.cc")
 target_link_libraries(toydb toydb_grpc_proto
         gRPC::gpr gRPC::grpc gRPC::grpc++ gRPC::grpc++_alts gRPC::grpc++_reflection
         absl::any absl::base absl::bits absl::city absl::flags absl::flags_parse absl::flags_config)

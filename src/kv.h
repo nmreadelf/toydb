@@ -5,29 +5,26 @@
 #ifndef MYTOYDB_KV_H
 #define MYTOYDB_KV_H
 #include <absl/container/btree_map.h>
-#include <string>
-#include <cstdint>
 #include <absl/status/status.h>
-
-
+#include <cstdint>
+#include <string>
 
 namespace toydb {
 using ::absl::Status;
-class Store {
+class KvStore {
 public:
-    Store(): data_() {
-    }
+  KvStore() : data_() {}
 
-    void Delete(const std::string& key);
+  void Delete(const std::string &key);
 
-    Status Get(const std::string& key, std::string *value);
+  Status Get(const std::string &key, std::string *value);
 
-    void Set(const std::string& key, const std::string &value);
+  void Set(const std::string &key, const std::string &value);
+
 private:
-   absl::btree_map<std::string, std::string> data_;
+  absl::btree_map<std::string, std::string> data_;
 };
 
-}
+} // namespace toydb
 
-
-#endif //MYTOYDB_KV_H
+#endif // MYTOYDB_KV_H

@@ -3,6 +3,11 @@ syntax = "proto3";
 // An asynchronous Raft service used for intra-cluster message pssing.
 // For details on messages, set toydb::raft::transport module.
 
+message State {
+  string key = 1;
+  string value = 2;
+}
+
 message Heartbeat {
   uint64 commit_index = 1;
   uint64 commit_term = 2;
