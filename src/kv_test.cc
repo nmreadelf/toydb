@@ -9,7 +9,7 @@ using ::testing::Test;
 
 namespace toydb {
 TEST(StoreTest, Delete) {
-  Store s;
+  KvStore s;
   std::string key = "a";
   std::string value = "1";
   s.Set(key, value);
@@ -25,7 +25,7 @@ TEST(StoreTest, Delete) {
   EXPECT_TRUE(IsNotFound(st));
 }
 TEST(StoreTest, Get) {
-  Store s;
+  KvStore s;
   std::string key = "a";
   std::string value = "1";
   s.Set(key, value);
@@ -39,7 +39,7 @@ TEST(StoreTest, Set) {
   std::string key = "a";
   std::vector<std::string> values{"1", "2", "3"};
 
-  Store s;
+  KvStore s;
   for (int i = 0; i < values.size(); i++) {
     s.Set(key, values[i]);
     std::string v;

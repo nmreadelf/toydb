@@ -17,17 +17,17 @@ public:
   Log &operator=(const Log &) = delete;
 
   // Creates a new Log, using a KvStore for storage.
-  static Status Build(std::shared_ptr<toydb::KvStore> s, Log **log);
+  static std::pair<Status, Log *> Build(std::shared_ptr<toydb::KvStore> s);
 
   // Appends an entry to the Log.
-  std::pair<uint64_t, Status> Append(Entry &entry);
+  std::pair<Status, uint64_t> Append(Entry &entry);
 
   // Applies the next commited entry to the state machine, if any.
   // Returns the applied entry index and output, or None if no entry.
-  std::tuple<uint64_t, std::string, Status> Apply(Entry **entry);
+  std::tuple<Status, uint64_t, std::string> Apply(Entry **entry);
 
   // Comits entries ujp to and including an index
-  std::tuple<uint64_t, Status> Commit(uint64_t index);
+  std::tuple<Status, uint64_t> Commit(uint64_t index);
 
   // Fetches an entry at an index
   std::pair<Status, std::shared_ptr<Entry>> Get(uint64_t index);
@@ -54,18 +54,18 @@ public:
   std::shared_ptr<std::vector<std::shared_ptr<Entry>>> Range(uint64_t start);
 
   // Splices a set of entries onto an offset. The semantics are a bit unusual,
-  std::pair<uint64_t, Status>
+  std::pair<Status, uint64_t>
   Splice(uint64_t base, uint64_t base_term,
          std::vector<std::shared_ptr<Entry>> &entrys);
 
   // Truncates the log such that its last item is at most index.
   // Refuses to remove entries that have been applied or committed.
-  std::pair<uint64_t, Status> Truncate(uint64_t index);
+  std::pair<Status, uint64_t> Truncate(uint64_t index);
 
   // Loads information about the most recent term known by the log,
   // containing the term number (0 if none) and candidate voted for
   // in current term (if any).
-  std::tuple<uint64_t, std::string, Status> LoadTerm();
+  std::tuple<Status, uint64_t, std::string> LoadTerm();
 
   // Saves information about the most recent term.
   Status SaveTerm(uint64_t term, std::string &vote_for);

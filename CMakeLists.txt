@@ -48,10 +48,15 @@ add_library(kv "${PROJECT_SOURCE_DIR}/src/kv.cc" "${PROJECT_SOURCE_DIR}/src/kv.h
 target_link_libraries(kv absl::any)
 
 add_library(raft "${PROJECT_SOURCE_DIR}/src/raft/log.cc")
-target_link_libraries(raft absl::any)
+target_link_libraries(raft absl::any toydb_grpc_proto
+        gRPC::gpr gRPC::grpc gRPC::grpc++ gRPC::grpc++_alts gRPC::grpc++_reflection
+        )
 
 add_executable(kv_test "${PROJECT_SOURCE_DIR}/src/kv_test.cc" )
 target_link_libraries(kv_test kv GTest::gtest GTest::gtest_main absl::any absl::base absl::status)
+
+add_executable(raftlog_test "${PROJECT_SOURCE_DIR}/src/raft/log_test.cc")
+target_link_libraries(raftlog_test kv GTest::gtest GTest::gtest_main absl::any absl::base absl::status raft)
 
 add_executable(toydb "${PROJECT_SOURCE_DIR}/src/bin/toydb.cc" "${PROJECT_SOURCE_DIR}/src/server/toydb_imp.cc" "${PROJECT_SOURCE_DIR}/src/server/raftserver_impl.cc" "${PROJECT_SOURCE_DIR}/src/client/raftserver_client.cc")
 target_link_libraries(toydb toydb_grpc_proto

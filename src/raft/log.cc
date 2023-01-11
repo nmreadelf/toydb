@@ -6,7 +6,7 @@
 #include <ranges>
 
 namespace toydb::raft {
-Status Log::Build(std::shared_ptr<toydb::KvStore> s, Log **log) {
+std::pair<Status, Log *> Log::Build(std::shared_ptr<toydb::KvStore> s) {
   static int n = sizeof(uint64_t);
   uint64_t last_index = 0;
   uint64_t last_term = 0;
@@ -17,47 +17,51 @@ Status Log::Build(std::shared_ptr<toydb::KvStore> s, Log **log) {
   std::string v;
   v.resize(n);
   // decode uint64_t
+  auto ok = s->Get("apply_index", &v);
   {
     char *rbuffer = reinterpret_cast<char *>(&(v[0]));
-    auto ok = s->Get("apply_index", &v);
-    if (!ok.ok()) {
-      apply_index = 0;
+    if (ok.ok()) {
+      memcpy(static_cast<void *>(&apply_index), rbuffer, n);
     }
-    memcpy(static_cast<void *>(&apply_index), rbuffer, n);
   }
 
-  {
-    auto ok = s->Get(std::to_string(apply_index), &v);
-    if (!ok.ok() && (apply_index != 0)) {
-      return absl::AbortedError("Applied entry " + std::to_string(apply_index) +
-                                " not found");
-    }
-    commit_index = apply_index;
+  ok = s->Get(std::to_string(apply_index), &v);
+  if (ok.ok()) {
     Entry e;
     bool st = e.ParseFromString(v);
     if (!st) {
-      return absl::AbortedError("parse entry " + std::to_string(apply_index) +
-                                " fail");
+      return std::make_pair(absl::AbortedError("parse entry " +
+                                               std::to_string(apply_index) +
+                                               " fail"),
+                            nullptr);
     }
     commit_term = e.term();
+  } else if (apply_index != 0) {
+    return std::make_pair(absl::AbortedError("Applied entry " +
+                                             std::to_string(apply_index) +
+                                             " not found"),
+                          nullptr);
   }
+  commit_index = apply_index;
 
   apply_term = commit_term;
   for (uint64_t i : std::ranges::iota_view{1, 0}) {
-    auto ok = s->Get(std::to_string(i), &v);
+    ok = s->Get(std::to_string(i), &v);
     if (!ok.ok()) {
       break;
     }
     Entry e;
     bool st = e.ParseFromString(v);
     if (!st) {
-      return absl::AbortedError("parse entry " + std::to_string(i) + " fail");
+      return std::make_pair(
+          absl::AbortedError("parse entry " + std::to_string(i) + " fail"),
+          nullptr);
     }
     last_index = i;
     last_term = e.term();
   }
-  *log = new Log(s, last_index, last_term, commit_index, commit_term,
-                 apply_index, apply_term);
+  auto log = new Log(s, last_index, last_term, commit_index, commit_term,
+                     apply_index, apply_term);
   /*
    * encode uint64_t
    * std::string v;
@@ -67,19 +71,19 @@ Status Log::Build(std::shared_ptr<toydb::KvStore> s, Log **log) {
    * memcpy(rbuffer, static_cast<void*>(&last_index_), n)
    */
 
-  return absl::OkStatus();
+  return std::make_pair(absl::OkStatus(), log);
 }
 
-std::pair<uint64_t, Status> Log::Append(Entry &entry) {
+std::pair<Status, uint64_t> Log::Append(Entry &entry) {
   last_index_++;
   last_term_ = entry.term();
   kv_->Set(std::to_string(last_index_), entry.SerializeAsString());
-  return std::make_pair(last_index_, absl::OkStatus());
+  return std::make_pair(absl::OkStatus(), last_index_);
 }
 
-std::tuple<uint64_t, std::string, Status> Log::Apply(Entry **entry) {
+std::tuple<Status, uint64_t, std::string> Log::Apply(Entry **entry) {
   if (apply_index_ >= commit_index_) {
-    return std::make_tuple(0, "", absl::OkStatus());
+    return std::make_tuple(absl::OkStatus(), 0, "");
   }
 
   std::string output;
@@ -93,25 +97,25 @@ std::tuple<uint64_t, std::string, Status> Log::Apply(Entry **entry) {
   char *buf = reinterpret_cast<char *>(&(v[0]));
   memcpy(buf, static_cast<void *>(&apply_index_), n);
   kv_->Set("apply_index", v);
-  return std::make_tuple(apply_index_, std::move(output), absl::OkStatus());
+  return std::make_tuple(absl::OkStatus(), apply_index_, std::move(output));
 }
 
-std::tuple<uint64_t, Status> Log::Commit(uint64_t index) {
+std::tuple<Status, uint64_t> Log::Commit(uint64_t index) {
   index = std::min(index, last_index_);
   index = std::min(index, commit_index_);
   if (index != commit_index_) {
     auto res = Get(index);
     if (!res.first.ok()) {
-      return std::make_tuple(index,
-                             absl::NotFoundError("Entry at commit index " +
+      return std::make_tuple(absl::NotFoundError("Entry at commit index " +
                                                  std::to_string(index) +
-                                                 " does not exist"));
+                                                 " does not exist"),
+                             index);
     }
     commit_index_ = index;
     commit_term_ = res.second->term();
   }
 
-  return std::make_tuple(index, absl::OkStatus());
+  return std::make_tuple(absl::OkStatus(), index);
 }
 
 std::pair<Status, std::shared_ptr<Entry>> Log::Get(uint64_t index) {
@@ -134,7 +138,7 @@ bool Log::Has(uint64_t index, uint64_t term) {
 
   auto res = Get(index);
   if (res.first.ok()) {
-    return res.second.term() == term;
+    return res.second->term() == term;
   }
   return false;
 }
@@ -150,13 +154,14 @@ Log::Range(uint64_t start) {
   return es;
 }
 
-std::pair<uint64_t, Status>
+std::pair<Status, uint64_t>
 Log::Splice(uint64_t base, uint64_t base_term,
             std::vector<std::shared_ptr<Entry>> &entrys) {
   if (base > 0 && !Has(base, base_term)) {
     return std::make_pair(
-        0, absl::NotFoundError("raft base " + std::to_string(base) + ":" +
-                               std::to_string(base_term) + " not found"));
+        absl::NotFoundError("raft base " + std::to_string(base) + ":" +
+                            std::to_string(base_term) + " not found"),
+        0);
   }
 
   uint64_t i = 0;
@@ -170,21 +175,21 @@ Log::Splice(uint64_t base, uint64_t base_term,
       continue;
     }
     auto ok = Truncate(base + i);
-    if (!ok.second.ok()) {
+    if (!ok.first.ok()) {
       return ok;
     }
   }
-  return std::make_pair(last_index_, absl::OkStatus());
+  return std::make_pair(absl::OkStatus(), last_index_);
 }
 
-std::pair<uint64_t, Status> Log::Truncate(uint64_t index) {
+std::pair<Status, uint64_t> Log::Truncate(uint64_t index) {
   if (index < apply_index_) {
-    return std::make_pair(
-        0, absl::AbortedError("cannot remove applied log entry"));
+    return std::make_pair(absl::AbortedError("cannot remove applied log entry"),
+                          0);
   }
   if (index < commit_index_) {
     return std::make_pair(
-        0, absl::AbortedError("cannot remove committed log entry"));
+        absl::AbortedError("cannot remove committed log entry"), 0);
   }
 
   for (uint64_t i : std::ranges::iota_view{index + 1, last_index_ + 1}) {
@@ -193,17 +198,17 @@ std::pair<uint64_t, Status> Log::Truncate(uint64_t index) {
   last_index_ = std::min(index, last_index_);
   auto res = Get(last_index_);
   if (!res.first.ok()) {
-    return std::make_pair(0, res.first);
+    return std::make_pair(res.first, 0);
   }
   last_term_ = res.second->term();
-  return std::make_pair(last_index_, absl::OkStatus());
+  return std::make_pair(absl::OkStatus(), last_index_);
 }
 
-std::tuple<uint64_t, std::string, Status> Log::LoadTerm() {
+std::tuple<Status, uint64_t, std::string> Log::LoadTerm() {
   std::string v;
   auto ok = kv_->Get("term", &v);
   if (!ok.ok()) {
-    return std::make_tuple(0, "", ok);
+    return std::make_tuple(ok, 0, "");
   }
   uint64_t term = 0;
   int n = sizeof(term);
@@ -212,9 +217,9 @@ std::tuple<uint64_t, std::string, Status> Log::LoadTerm() {
   memcpy(static_cast<void *>(&term), buf, n);
   ok = kv_->Get("voted_for", &v);
   if (!ok.ok()) {
-    return std::make_tuple(0, "", ok);
+    return std::make_tuple(ok, 0, "");
   }
-  return std::make_tuple(term, v, ok);
+  return std::make_tuple(ok, term, v);
 }
 
 Status Log::SaveTerm(uint64_t term, std::string &vote_for) {
