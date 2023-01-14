@@ -102,7 +102,7 @@ std::tuple<Status, uint64_t, std::string> Log::Apply(Entry **entry) {
 
 std::tuple<Status, uint64_t> Log::Commit(uint64_t index) {
   index = std::min(index, last_index_);
-  index = std::min(index, commit_index_);
+  index = std::max(index, commit_index_);
   if (index != commit_index_) {
     auto res = Get(index);
     if (!res.first.ok()) {

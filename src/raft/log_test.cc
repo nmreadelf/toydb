@@ -56,6 +56,7 @@ TEST(RaftTest, Append) {
     EXPECT_TRUE(!res.first.ok());
   }
   {
+    // Append none command
     Entry e;
     e.set_term(3);
     auto res = log->Append(e);
@@ -101,6 +102,164 @@ TEST(RaftTest, AppendPersistence) {
     EXPECT_TRUE(res.first.ok());
     EXPECT_EQ(res.second->command(), es[i - 1]->command());
     EXPECT_EQ(res.second->term(), es[i - 1]->term());
+  }
+}
+
+TEST(RaftTest, ApplyTest) {
+  std::shared_ptr<KvStore> s(new KvStore);
+  Log *l;
+  {
+    auto res = Log::Build(s);
+    EXPECT_TRUE(res.first.ok());
+    l = res.second;
+  }
+  Entry e1;
+  e1.set_term(1);
+  e1.set_command("1");
+  Entry e2;
+  e2.set_term(2);
+  Entry e3;
+  e3.set_term(2);
+  e3.set_command("3");
+  std::vector<uint64_t> idsx;
+  std::vector<Entry *> es{&e1, &e2, &e3};
+  {
+    std::shared_ptr<Log> log(l);
+    for (const auto e : es) {
+      auto res = log->Append(*e);
+      EXPECT_TRUE(res.first.ok());
+      idsx.push_back(res.second);
+    }
+    {
+      auto res = log->Commit(3);
+      EXPECT_TRUE(std::get<0>(res).ok());
+      EXPECT_EQ(3, std::get<1>(res));
+    }
+  }
+}
+
+TEST(RaftTest, CommitTest) {
+  Entry e1;
+  e1.set_term(1);
+  e1.set_command("1");
+  Entry e2;
+  e2.set_term(2);
+  Entry e3;
+  e3.set_term(2);
+  e3.set_command("3");
+  std::vector<uint64_t> idsx;
+  std::vector<Entry *> es{&e1, &e2, &e3};
+  {
+    std::shared_ptr<KvStore> s(new KvStore);
+    Log *l;
+    {
+      auto res = Log::Build(s);
+      EXPECT_TRUE(res.first.ok());
+      l = res.second;
+    }
+    {
+      std::shared_ptr<Log> log(l);
+      for (const auto e : es) {
+        auto res = log->Append(*e);
+        EXPECT_TRUE(res.first.ok());
+        idsx.push_back(res.second);
+      }
+      {
+        auto res = log->Commit(3);
+        EXPECT_TRUE(std::get<0>(res).ok());
+        EXPECT_EQ(3, std::get<1>(res));
+      }
+      auto res = log->GetCommitted();
+      EXPECT_EQ(3, res.first);
+      EXPECT_EQ(2, res.second);
+    }
+    {
+      auto res = Log::Build(s);
+      EXPECT_TRUE(res.first.ok());
+      l = res.second;
+    }
+    std::shared_ptr<Log> log2(l);
+    {
+      auto res = log2->GetCommitted();
+      EXPECT_EQ(0, res.first);
+      EXPECT_EQ(0, res.second);
+    }
+  }
+  // Commit beyond
+  {
+    std::shared_ptr<KvStore> s2(new KvStore);
+    auto r = Log::Build(s2);
+    EXPECT_TRUE(r.first.ok());
+    std::shared_ptr<Log> ll(r.second);
+
+    for (const auto e : es) {
+      auto res = ll->Append(*e);
+      EXPECT_TRUE(res.first.ok());
+    }
+    {
+      auto res = ll->Commit(4);
+      EXPECT_TRUE(std::get<0>(res).ok());
+      EXPECT_EQ(3, std::get<1>(res));
+    }
+    {
+      auto res = ll->GetCommitted();
+      EXPECT_EQ(3, res.first);
+      EXPECT_EQ(2, res.second);
+    }
+  }
+  // Commit partial
+  {
+    std::shared_ptr<KvStore> s2(new KvStore);
+    auto r = Log::Build(s2);
+    EXPECT_TRUE(r.first.ok());
+    std::shared_ptr<Log> ll(r.second);
+
+    for (const auto e : es) {
+      auto res = ll->Append(*e);
+      EXPECT_TRUE(res.first.ok());
+    }
+    {
+      auto res = ll->Commit(2);
+      EXPECT_TRUE(std::get<0>(res).ok());
+      EXPECT_EQ(2, std::get<1>(res));
+    }
+    {
+      auto res = ll->GetCommitted();
+      EXPECT_EQ(2, res.first);
+      EXPECT_EQ(2, res.second);
+    }
+  }
+  // Commit reduce
+  {
+    std::shared_ptr<KvStore> s2(new KvStore);
+    auto r = Log::Build(s2);
+    EXPECT_TRUE(r.first.ok());
+    std::shared_ptr<Log> ll(r.second);
+
+    for (const auto e : es) {
+      auto res = ll->Append(*e);
+      EXPECT_TRUE(res.first.ok());
+    }
+    {
+      auto res = ll->Commit(2);
+      EXPECT_TRUE(std::get<0>(res).ok());
+      EXPECT_EQ(2, std::get<1>(res));
+    }
+    {
+      auto res = ll->GetCommitted();
+      EXPECT_EQ(2, res.first);
+      EXPECT_EQ(2, res.second);
+    }
+    {
+      auto res = ll->Commit(1);
+      EXPECT_TRUE(std::get<0>(res).ok());
+      EXPECT_EQ(2, std::get<1>(res));
+    }
+    {
+      auto res = ll->GetCommitted();
+      EXPECT_EQ(2, res.first);
+      EXPECT_EQ(2, res.second);
+    }
   }
 }
 } // namespace toydb::raft
