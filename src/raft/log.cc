@@ -81,16 +81,22 @@ std::pair<Status, uint64_t> Log::Append(Entry &entry) {
   return std::make_pair(absl::OkStatus(), last_index_);
 }
 
-std::tuple<Status, uint64_t, std::string> Log::Apply(Entry **entry) {
+std::tuple<Status, uint64_t, std::string> Log::Apply(State *state) {
   if (apply_index_ >= commit_index_) {
     return std::make_tuple(absl::OkStatus(), 0, "");
   }
 
   std::string output;
   auto res = Get(apply_index_ + 1);
-  if (res.first.ok() && !res.second->command().empty()) {
-    output = res.second->command();
+  if (res.first.ok()) {
+    apply_index_++;
+    apply_term_ = res.second->term();
+    if (!res.second->command().empty()) {
+      auto r = state->Mutate(res.second->command());
+      output = r.second;
+    }
   }
+
   std::string v;
   int n = sizeof(apply_index_);
   v.resize(n);

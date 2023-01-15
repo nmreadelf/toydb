@@ -44,7 +44,7 @@ target_link_libraries(toydb_grpc_proto
         ${_GRPC_GRPCPP}
         ${_PROTOBUF_LIBPROTOBUF})
 
-add_library(kv "${PROJECT_SOURCE_DIR}/src/kv.cc" "${PROJECT_SOURCE_DIR}/src/kv.h")
+add_library(kv "${PROJECT_SOURCE_DIR}/src/kv.cc" "${PROJECT_SOURCE_DIR}/src/kv.h" src/state.cc src/state.h)
 target_link_libraries(kv absl::any)
 
 add_library(raft "${PROJECT_SOURCE_DIR}/src/raft/log.cc")

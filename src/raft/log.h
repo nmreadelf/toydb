@@ -6,8 +6,12 @@
 #define MYTOYDB_LOG_H
 #include "kv.h"
 #include "proto/raft.pb.h"
+#include "state.h"
 #include <memory>
 #include <utility>
+
+using raft::Entry;
+using toydb::Status;
 
 namespace toydb::raft {
 class Log {
@@ -24,7 +28,7 @@ public:
 
   // Applies the next commited entry to the state machine, if any.
   // Returns the applied entry index and output, or None if no entry.
-  std::tuple<Status, uint64_t, std::string> Apply(Entry **entry);
+  std::tuple<Status, uint64_t, std::string> Apply(State *state);
 
   // Comits entries ujp to and including an index
   std::tuple<Status, uint64_t> Commit(uint64_t index);

@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package raft;
+
 // An asynchronous Raft service used for intra-cluster message pssing.
 // For details on messages, set toydb::raft::transport module.
 
