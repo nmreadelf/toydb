@@ -3,8 +3,8 @@
 //
 
 #include "log.h"
-#include <ranges>
 #include <cstdint>
+#include <ranges>
 
 namespace toydb::raft {
 std::pair<Status, Log *> Log::Build(std::shared_ptr<toydb::KvStore> s) {
@@ -46,7 +46,8 @@ std::pair<Status, Log *> Log::Build(std::shared_ptr<toydb::KvStore> s) {
   commit_index = apply_index;
 
   apply_term = commit_term;
-  for (uint64_t i : std::ranges::iota_view(uint64_t(1)) | std::views::take(UINT64_MAX)) {
+  for (uint64_t i :
+       std::ranges::iota_view(uint64_t(1)) | std::views::take(UINT64_MAX)) {
     ok = s->Get(std::to_string(i), &v);
     if (!ok.ok()) {
       break;

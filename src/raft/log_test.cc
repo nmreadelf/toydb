@@ -406,6 +406,31 @@ TEST(RaftTest, GetTest) {
   }
 }
 
+TEST(RaftTest, HasTest) {
+  auto log = buildLog();
+  {
+    auto res = log->Get(1);
+    EXPECT_TRUE(!res.first.ok());
+    EXPECT_EQ(res.second, nullptr);
+  }
+  Entry e;
+  e.set_term(2);
+  e.set_command("1");
+  {
+    auto res = log->Append(e);
+    EXPECT_TRUE(res.first.ok());
+  }
+  {
+    EXPECT_TRUE(log->Has(1, 2));
+    EXPECT_TRUE(log->Has(0, 0));
+    EXPECT_FALSE(log->Has(0, 1));
+    EXPECT_FALSE(log->Has(1, 0));
+    EXPECT_FALSE(log->Has(1, 3));
+    EXPECT_FALSE(log->Has(2, 0));
+    EXPECT_FALSE(log->Has(2, 1));
+  }
+}
+
 } // namespace toydb::raft
 
 int main(int argc, char **argv) {
