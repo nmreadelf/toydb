@@ -5,8 +5,15 @@ using ::testing::InitGoogleTest;
 using ::testing::Test;
 
 namespace toydb::raft {
-std::shared_ptr<Log> buildLog() {
+std::pair<std::shared_ptr<Log>, std::shared_ptr<KvStore>> buildLog() {
   std::shared_ptr<KvStore> s(new KvStore);
+  auto res = Log::Build(s);
+  EXPECT_TRUE(res.first.ok());
+  std::shared_ptr<Log> log(res.second);
+  return std::make_pair(std::shared_ptr<Log>(res.second), s);
+}
+
+std::shared_ptr<Log> buildLog(std::shared_ptr<KvStore> &s) {
   auto res = Log::Build(s);
   EXPECT_TRUE(res.first.ok());
   std::shared_ptr<Log> log(res.second);
@@ -14,7 +21,8 @@ std::shared_ptr<Log> buildLog() {
 }
 
 TEST(RaftTest, Build) {
-  auto log = buildLog();
+  auto r = buildLog();
+  auto log = r.first;
   {
     auto res = log->GetLast();
     EXPECT_EQ(res.first, 0);
@@ -37,7 +45,8 @@ TEST(RaftTest, Build) {
 }
 
 TEST(RaftTest, Append) {
-  auto log = buildLog();
+  auto r = buildLog();
+  auto log = r.first;
   {
     Entry e;
     e.set_command("1");
@@ -70,14 +79,9 @@ TEST(RaftTest, Append) {
 }
 
 TEST(RaftTest, AppendPersistence) {
-  std::shared_ptr<KvStore> s(new KvStore);
-  Log *l;
-  {
-    auto res = Log::Build(s);
-    EXPECT_TRUE(res.first.ok());
-    l = res.second;
-  }
-  std::shared_ptr<Log> log(l);
+  auto r = buildLog();
+  auto log = r.first;
+  auto s = r.second;
   Entry e1;
   e1.set_term(1);
   e1.set_command("1");
@@ -93,12 +97,7 @@ TEST(RaftTest, AppendPersistence) {
     EXPECT_TRUE(res.first.ok());
     idsx.push_back(res.second);
   }
-  {
-    auto res = Log::Build(s);
-    EXPECT_TRUE(res.first.ok());
-    l = res.second;
-  }
-  std::shared_ptr<Log> log2(l);
+  auto log2 = buildLog(s);
   for (const auto i : idsx) {
     auto res = log2->Get(i);
     EXPECT_TRUE(res.first.ok());
@@ -122,15 +121,10 @@ TEST(RaftTest, ApplyTest) {
   std::vector<Entry *> es{&e1, &e2, &e3};
   {
 
-    std::shared_ptr<KvStore> s(new KvStore);
-    Log *l;
+    auto r = buildLog();
+    auto s = r.second;
     {
-      auto res = Log::Build(s);
-      EXPECT_TRUE(res.first.ok());
-      l = res.second;
-    }
-    {
-      std::shared_ptr<Log> log(l);
+      auto log = r.first;
       for (const auto e : es) {
         auto res = log->Append(*e);
         EXPECT_TRUE(res.first.ok());
@@ -195,9 +189,7 @@ TEST(RaftTest, ApplyTest) {
     // The last applied entry should be persisted, and also used for last
     // committed
     {
-      auto r = Log::Build(s);
-      EXPECT_TRUE(r.first.ok());
-      std::shared_ptr<Log> ll(r.second);
+      auto ll = buildLog(s);
       {
         auto res = ll->GetLast();
         EXPECT_EQ(3, res.first);
@@ -217,10 +209,10 @@ TEST(RaftTest, ApplyTest) {
   }
   {
 
-    std::shared_ptr<KvStore> s2(new KvStore);
-    auto r = Log::Build(s2);
-    EXPECT_TRUE(r.first.ok());
-    std::shared_ptr<Log> log(r.second);
+    auto r = buildLog();
+    auto s = r.second;
+    auto log = r.first;
+
     for (const auto e : es) {
       auto res = log->Append(*e);
       EXPECT_TRUE(res.first.ok());
@@ -266,15 +258,10 @@ TEST(RaftTest, CommitTest) {
   std::vector<uint64_t> idsx;
   std::vector<Entry *> es{&e1, &e2, &e3};
   {
-    std::shared_ptr<KvStore> s(new KvStore);
-    Log *l;
+    auto r = buildLog();
+    auto s = r.second;
     {
-      auto res = Log::Build(s);
-      EXPECT_TRUE(res.first.ok());
-      l = res.second;
-    }
-    {
-      std::shared_ptr<Log> log(l);
+      auto log = r.first;
       for (const auto e : es) {
         auto res = log->Append(*e);
         EXPECT_TRUE(res.first.ok());
@@ -289,12 +276,7 @@ TEST(RaftTest, CommitTest) {
       EXPECT_EQ(3, res.first);
       EXPECT_EQ(2, res.second);
     }
-    {
-      auto res = Log::Build(s);
-      EXPECT_TRUE(res.first.ok());
-      l = res.second;
-    }
-    std::shared_ptr<Log> log2(l);
+    auto log2 = buildLog(s);
     {
       auto res = log2->GetCommitted();
       EXPECT_EQ(0, res.first);
@@ -303,10 +285,9 @@ TEST(RaftTest, CommitTest) {
   }
   // Commit beyond
   {
-    std::shared_ptr<KvStore> s2(new KvStore);
-    auto r = Log::Build(s2);
-    EXPECT_TRUE(r.first.ok());
-    std::shared_ptr<Log> ll(r.second);
+    auto r = buildLog();
+    auto s = r.second;
+    auto ll = r.first;
 
     for (const auto e : es) {
       auto res = ll->Append(*e);
@@ -325,10 +306,9 @@ TEST(RaftTest, CommitTest) {
   }
   // Commit partial
   {
-    std::shared_ptr<KvStore> s2(new KvStore);
-    auto r = Log::Build(s2);
-    EXPECT_TRUE(r.first.ok());
-    std::shared_ptr<Log> ll(r.second);
+    auto r = buildLog();
+    auto s = r.second;
+    auto ll = r.first;
 
     for (const auto e : es) {
       auto res = ll->Append(*e);
@@ -347,10 +327,9 @@ TEST(RaftTest, CommitTest) {
   }
   // Commit reduce
   {
-    std::shared_ptr<KvStore> s2(new KvStore);
-    auto r = Log::Build(s2);
-    EXPECT_TRUE(r.first.ok());
-    std::shared_ptr<Log> ll(r.second);
+    auto r = buildLog();
+    auto s = r.second;
+    auto ll = r.first;
 
     for (const auto e : es) {
       auto res = ll->Append(*e);
@@ -380,7 +359,8 @@ TEST(RaftTest, CommitTest) {
 }
 
 TEST(RaftTest, GetTest) {
-  auto log = buildLog();
+  std::shared_ptr<KvStore> s = std::make_shared<KvStore>();
+  auto log = buildLog(s);
   {
     auto res = log->Get(1);
     EXPECT_TRUE(!res.first.ok());
@@ -407,7 +387,8 @@ TEST(RaftTest, GetTest) {
 }
 
 TEST(RaftTest, HasTest) {
-  auto log = buildLog();
+  std::shared_ptr<KvStore> s = std::make_shared<KvStore>();
+  auto log = buildLog(s);
   {
     auto res = log->Get(1);
     EXPECT_TRUE(!res.first.ok());
@@ -432,7 +413,8 @@ TEST(RaftTest, HasTest) {
 }
 
 TEST(RaftTest, RangeTest) {
-  auto log = buildLog();
+  std::shared_ptr<KvStore> s = std::make_shared<KvStore>();
+  auto log = buildLog(s);
   {
     auto res = log->Get(1);
     EXPECT_TRUE(!res.first.ok());
@@ -462,6 +444,53 @@ TEST(RaftTest, RangeTest) {
     EXPECT_FALSE(log->Has(1, 3));
     EXPECT_FALSE(log->Has(2, 0));
     EXPECT_FALSE(log->Has(2, 1));
+  }
+}
+
+TEST(RaftTest, LoadSaveTermTest) {
+  std::shared_ptr<KvStore> s = std::make_shared<KvStore>();
+  {
+    auto log = buildLog(s);
+    {
+      auto res = log->LoadTerm();
+      EXPECT_TRUE(std::get<0>(res).ok());
+      EXPECT_EQ(0, std::get<1>(res));
+      EXPECT_EQ("", std::get<2>(res));
+    }
+    std::string a("a");
+    auto res = log->SaveTerm(1, a);
+    EXPECT_TRUE(res.ok());
+  }
+  {
+    auto log = buildLog(s);
+    {
+      auto res = log->LoadTerm();
+      EXPECT_TRUE(std::get<0>(res).ok());
+      EXPECT_EQ(1, std::get<1>(res));
+      EXPECT_EQ("a", std::get<2>(res));
+    }
+    std::string a("c");
+    auto res = log->SaveTerm(3, a);
+    EXPECT_TRUE(res.ok());
+  }
+  {
+    auto log = buildLog(s);
+    {
+      auto res = log->LoadTerm();
+      EXPECT_TRUE(std::get<0>(res).ok());
+      EXPECT_EQ(3, std::get<1>(res));
+      EXPECT_EQ("c", std::get<2>(res));
+    }
+    std::string a;
+    auto res = log->SaveTerm(0, a);
+    EXPECT_TRUE(res.ok());
+  }
+  {
+    auto log = buildLog(s);
+    auto res = log->LoadTerm();
+    EXPECT_TRUE(std::get<0>(res).ok());
+    EXPECT_EQ(0, std::get<1>(res));
+    EXPECT_EQ("", std::get<2>(res));
   }
 }
 

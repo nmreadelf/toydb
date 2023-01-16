@@ -216,7 +216,7 @@ std::tuple<Status, uint64_t, std::string> Log::LoadTerm() {
   std::string v;
   auto ok = kv_->Get("term", &v);
   if (!ok.ok()) {
-    return std::make_tuple(ok, 0, "");
+    return std::make_tuple(absl::OkStatus(), 0, "");
   }
   uint64_t term = 0;
   int n = sizeof(term);
@@ -225,14 +225,19 @@ std::tuple<Status, uint64_t, std::string> Log::LoadTerm() {
   memcpy(static_cast<void *>(&term), buf, n);
   ok = kv_->Get("voted_for", &v);
   if (!ok.ok()) {
-    return std::make_tuple(ok, 0, "");
+    return std::make_tuple(absl::OkStatus(), term, "");
   }
   return std::make_tuple(ok, term, v);
 }
 
 Status Log::SaveTerm(uint64_t term, std::string &vote_for) {
   if (term > 0) {
-    kv_->Set("term", std::to_string(term));
+    std::string v;
+    int n = sizeof(term);
+    v.resize(n);
+    char *buf = reinterpret_cast<char *>(&(v[0]));
+    memcpy(buf, static_cast<void *>(&term), n);
+    kv_->Set("term", v);
   } else {
     kv_->Delete("term");
   }
