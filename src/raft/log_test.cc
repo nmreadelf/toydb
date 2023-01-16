@@ -13,6 +13,7 @@ std::shared_ptr<Log> buildLog() {
   std::shared_ptr<Log> log(res.second);
   return log;
 }
+
 TEST(RaftTest, Build) {
   auto log = buildLog();
   {
@@ -35,6 +36,7 @@ TEST(RaftTest, Build) {
     EXPECT_TRUE(!res.first.ok());
   }
 }
+
 TEST(RaftTest, Append) {
   auto log = buildLog();
   {
@@ -67,6 +69,7 @@ TEST(RaftTest, Append) {
     EXPECT_EQ(get_res.second->term(), 3);
   }
 }
+
 TEST(RaftTest, AppendPersistence) {
   std::shared_ptr<KvStore> s(new KvStore);
   Log *l;
@@ -106,13 +109,6 @@ TEST(RaftTest, AppendPersistence) {
 }
 
 TEST(RaftTest, ApplyTest) {
-  std::shared_ptr<KvStore> s(new KvStore);
-  Log *l;
-  {
-    auto res = Log::Build(s);
-    EXPECT_TRUE(res.first.ok());
-    l = res.second;
-  }
   Entry e1;
   std::string e1_cmd = "1";
   e1.set_term(1);
@@ -126,88 +122,135 @@ TEST(RaftTest, ApplyTest) {
   std::vector<uint64_t> idsx;
   std::vector<Entry *> es{&e1, &e2, &e3};
   {
-    std::shared_ptr<Log> log(l);
+
+    std::shared_ptr<KvStore> s(new KvStore);
+    Log *l;
+    {
+      auto res = Log::Build(s);
+      EXPECT_TRUE(res.first.ok());
+      l = res.second;
+    }
+    {
+      std::shared_ptr<Log> log(l);
+      for (const auto e : es) {
+        auto res = log->Append(*e);
+        EXPECT_TRUE(res.first.ok());
+        idsx.push_back(res.second);
+      }
+      {
+        auto res = log->Commit(3);
+        EXPECT_TRUE(std::get<0>(res).ok());
+        EXPECT_EQ(3, std::get<1>(res));
+      }
+      TestState ts;
+      {
+        auto res = log->Apply(&ts);
+        EXPECT_TRUE(std::get<0>(res).ok());
+        EXPECT_EQ(1, std::get<1>(res));
+        EXPECT_EQ("1", std::get<2>(res));
+        EXPECT_EQ(std::vector<std::string>{e1_cmd}, ts.List());
+      }
+      {
+        auto res = log->GetApplied();
+        EXPECT_EQ(1, res.first);
+        EXPECT_EQ(1, res.second);
+      }
+      {
+        auto res = log->Apply(&ts);
+        EXPECT_TRUE(std::get<0>(res).ok());
+        EXPECT_EQ(2, std::get<1>(res));
+        EXPECT_EQ("", std::get<2>(res));
+        EXPECT_EQ(std::vector<std::string>{e1_cmd}, ts.List());
+      }
+      {
+        auto res = log->GetApplied();
+        EXPECT_EQ(2, res.first);
+        EXPECT_EQ(2, res.second);
+      }
+      {
+        Entry e;
+        auto res = log->Apply(&ts);
+        EXPECT_TRUE(std::get<0>(res).ok());
+        EXPECT_EQ(3, std::get<1>(res));
+        EXPECT_EQ("3", std::get<2>(res));
+        std::vector<std::string> ee{e1_cmd, e3_cmd};
+        EXPECT_EQ(ee, ts.List());
+      }
+      {
+        auto res = log->GetApplied();
+        EXPECT_EQ(3, res.first);
+        EXPECT_EQ(2, res.second);
+      }
+      {
+        auto res = log->Apply(&ts);
+        EXPECT_TRUE(std::get<0>(res).ok());
+        EXPECT_EQ(0, std::get<1>(res));
+        EXPECT_EQ("", std::get<2>(res));
+      }
+      {
+        auto res = log->GetApplied();
+        EXPECT_EQ(3, res.first);
+        EXPECT_EQ(2, res.second);
+      }
+    }
+    // The last applied entry should be persisted, and also used for last
+    // committed
+    {
+      auto r = Log::Build(s);
+      EXPECT_TRUE(r.first.ok());
+      std::shared_ptr<Log> ll(r.second);
+      {
+        auto res = ll->GetLast();
+        EXPECT_EQ(3, res.first);
+        EXPECT_EQ(2, res.second);
+      }
+      {
+        auto res = ll->GetCommitted();
+        EXPECT_EQ(3, res.first);
+        EXPECT_EQ(2, res.second);
+      }
+      {
+        auto res = ll->GetApplied();
+        EXPECT_EQ(3, res.first);
+        EXPECT_EQ(2, res.second);
+      }
+    }
+  }
+  {
+
+    std::shared_ptr<KvStore> s2(new KvStore);
+    auto r = Log::Build(s2);
+    EXPECT_TRUE(r.first.ok());
+    std::shared_ptr<Log> log(r.second);
     for (const auto e : es) {
       auto res = log->Append(*e);
       EXPECT_TRUE(res.first.ok());
       idsx.push_back(res.second);
     }
     {
-      auto res = log->Commit(3);
+      auto res = log->Commit(1);
       EXPECT_TRUE(std::get<0>(res).ok());
-      EXPECT_EQ(3, std::get<1>(res));
     }
-    TestState ts;
+    TestState st;
     {
-      auto res = log->Apply(&ts);
+      auto res = log->Apply(&st);
       EXPECT_TRUE(std::get<0>(res).ok());
       EXPECT_EQ(1, std::get<1>(res));
       EXPECT_EQ("1", std::get<2>(res));
-      EXPECT_EQ(std::vector<std::string>{e1_cmd}, ts.List());
+      auto rr = log->GetApplied();
+      EXPECT_EQ(1, rr.first);
+      EXPECT_EQ(1, rr.second);
+      EXPECT_EQ(std::vector<std::string>{e1_cmd}, st.List());
     }
     {
-      auto res = log->GetApplied();
-      EXPECT_EQ(1, res.first);
-      EXPECT_EQ(1, res.second);
-    }
-    {
-      auto res = log->Apply(&ts);
-      EXPECT_TRUE(std::get<0>(res).ok());
-      EXPECT_EQ(2, std::get<1>(res));
-      EXPECT_EQ("", std::get<2>(res));
-      EXPECT_EQ(std::vector<std::string>{e1_cmd}, ts.List());
-    }
-    {
-      auto res = log->GetApplied();
-      EXPECT_EQ(2, res.first);
-      EXPECT_EQ(2, res.second);
-    }
-    {
-      Entry e;
-      auto res = log->Apply(&ts);
-      EXPECT_TRUE(std::get<0>(res).ok());
-      EXPECT_EQ(3, std::get<1>(res));
-      EXPECT_EQ("3", std::get<2>(res));
-      std::vector<std::string> ee{e1_cmd, e3_cmd};
-      EXPECT_EQ(ee, ts.List());
-    }
-    {
-      auto res = log->GetApplied();
-      EXPECT_EQ(3, res.first);
-      EXPECT_EQ(2, res.second);
-    }
-    {
-      auto res = log->Apply(&ts);
+      auto res = log->Apply(&st);
       EXPECT_TRUE(std::get<0>(res).ok());
       EXPECT_EQ(0, std::get<1>(res));
       EXPECT_EQ("", std::get<2>(res));
-    }
-    {
-      auto res = log->GetApplied();
-      EXPECT_EQ(3, res.first);
-      EXPECT_EQ(2, res.second);
-    }
-  }
-  {
-    auto res = Log::Build(s);
-    EXPECT_TRUE(res.first.ok());
-    l = res.second;
-    std::shared_ptr<Log> ll(res.second);
-
-    {
-      auto res = ll->GetLast();
-      EXPECT_EQ(3, res.first);
-      EXPECT_EQ(2, res.second);
-    }
-    {
-      auto res = ll->GetCommitted();
-      EXPECT_EQ(3, res.first);
-      EXPECT_EQ(2, res.second);
-    }
-    {
-      auto res = ll->GetApplied();
-      EXPECT_EQ(3, res.first);
-      EXPECT_EQ(2, res.second);
+      auto rr = log->GetApplied();
+      EXPECT_EQ(1, rr.first);
+      EXPECT_EQ(1, rr.second);
+      EXPECT_EQ(std::vector<std::string>{e1_cmd}, st.List());
     }
   }
 }
