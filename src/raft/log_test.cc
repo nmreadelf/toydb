@@ -1,4 +1,4 @@
-#include "raft/log.cc"
+#include "raft/log.h"
 #include <gtest/gtest.h>
 
 using ::testing::InitGoogleTest;
@@ -6,7 +6,6 @@ using ::testing::Test;
 
 namespace toydb::raft {
 std::shared_ptr<Log> buildLog() {
-
   std::shared_ptr<KvStore> s(new KvStore);
   auto res = Log::Build(s);
   EXPECT_TRUE(res.first.ok());
@@ -379,6 +378,34 @@ TEST(RaftTest, CommitTest) {
     }
   }
 }
+
+TEST(RaftTest, GetTest) {
+  auto log = buildLog();
+  {
+    auto res = log->Get(1);
+    EXPECT_TRUE(!res.first.ok());
+    EXPECT_EQ(res.second, nullptr);
+  }
+  Entry e;
+  e.set_term(3);
+  e.set_command("1");
+  {
+    auto res = log->Append(e);
+    EXPECT_TRUE(res.first.ok());
+  }
+  {
+    auto res = log->Get(1);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(e.term(), res.second->term());
+    EXPECT_EQ(e.command(), res.second->command());
+  }
+  {
+    auto res = log->Get(2);
+    EXPECT_TRUE(!res.first.ok());
+    EXPECT_EQ(res.second, nullptr);
+  }
+}
+
 } // namespace toydb::raft
 
 int main(int argc, char **argv) {
