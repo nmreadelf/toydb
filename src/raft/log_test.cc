@@ -9,7 +9,6 @@ std::pair<std::shared_ptr<Log>, std::shared_ptr<KvStore>> buildLog() {
   std::shared_ptr<KvStore> s(new KvStore);
   auto res = Log::Build(s);
   EXPECT_TRUE(res.first.ok());
-  std::shared_ptr<Log> log(res.second);
   return std::make_pair(std::shared_ptr<Log>(res.second), s);
 }
 
@@ -491,6 +490,56 @@ TEST(RaftTest, LoadSaveTermTest) {
     EXPECT_TRUE(std::get<0>(res).ok());
     EXPECT_EQ(0, std::get<1>(res));
     EXPECT_EQ("", std::get<2>(res));
+  }
+}
+
+TEST(RaftTest, SpliceTest) {
+  auto r = buildLog();
+  auto log = r.first;
+  Entry e1;
+  e1.set_term(1);
+  e1.set_command("1");
+  {
+    auto res = log->Append(e1);
+    EXPECT_TRUE(res.first.ok());
+  }
+  Entry e2;
+  e2.set_term(2);
+  e2.set_command("2");
+  {
+    auto res = log->Append(e2);
+    EXPECT_TRUE(res.first.ok());
+  }
+  Entry e3;
+  e3.set_term(3);
+  e3.set_command("3");
+  {
+    auto res = log->Append(e3);
+    EXPECT_TRUE(res.first.ok());
+  }
+  Entry e4;
+  e4.set_term(4);
+  e4.set_command("4");
+
+  {
+    std::vector<Entry *> ts{&e3, &e4};
+    auto res = log->Splice(2, 2, ts);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(4, res.second);
+  }
+  std::vector<Entry *> es{&e1, &e2, &e3, &e4};
+  {
+    for (int i = 0; i < es.size(); i++) {
+      auto res = log->Get(i + 1);
+      EXPECT_TRUE(res.first.ok());
+      EXPECT_EQ(es[i]->term(), res.second->term());
+      EXPECT_EQ(es[i]->command(), res.second->command());
+    }
+  }
+  {
+    auto res = log->GetLast();
+    EXPECT_EQ(4, res.first);
+    EXPECT_EQ(4, res.second);
   }
 }
 

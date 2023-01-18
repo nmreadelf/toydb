@@ -58,9 +58,8 @@ public:
   std::shared_ptr<std::vector<std::shared_ptr<Entry>>> Range(uint64_t start);
 
   // Splices a set of entries onto an offset. The semantics are a bit unusual,
-  std::pair<Status, uint64_t>
-  Splice(uint64_t base, uint64_t base_term,
-         std::vector<std::shared_ptr<Entry>> &entrys);
+  std::pair<Status, uint64_t> Splice(uint64_t base, uint64_t base_term,
+                                     std::vector<Entry *> &entrys);
 
   // Truncates the log such that its last item is at most index.
   // Refuses to remove entries that have been applied or committed.

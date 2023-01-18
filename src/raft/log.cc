@@ -162,9 +162,8 @@ Log::Range(uint64_t start) {
   return es;
 }
 
-std::pair<Status, uint64_t>
-Log::Splice(uint64_t base, uint64_t base_term,
-            std::vector<std::shared_ptr<Entry>> &entrys) {
+std::pair<Status, uint64_t> Log::Splice(uint64_t base, uint64_t base_term,
+                                        std::vector<Entry *> &entrys) {
   if (base > 0 && !Has(base, base_term)) {
     return std::make_pair(
         absl::NotFoundError("raft base " + std::to_string(base) + ":" +
@@ -173,7 +172,8 @@ Log::Splice(uint64_t base, uint64_t base_term,
   }
 
   uint64_t i = 0;
-  for (const auto &e : entrys) {
+  for (int i = 0; i < entrys.size(); i++) {
+    const auto &e = entrys[i];
     auto res = Get(base + i + 1);
     if (!res.first.ok()) {
       Append(*e);
