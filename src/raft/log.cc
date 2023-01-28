@@ -198,7 +198,7 @@ std::pair<Status, uint64_t> Log::Truncate(uint64_t index) {
         absl::AbortedError("cannot remove committed log entry"), 0);
   }
 
-  for (uint64_t i : std::ranges::iota_view{index + 1, last_index_ + 1}) {
+  for (uint64_t i = index + 1; i <= last_index_; i++) {
     kv_->Delete(std::to_string(i));
   }
   last_index_ = std::min(index, last_index_);

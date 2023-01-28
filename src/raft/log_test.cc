@@ -412,8 +412,8 @@ TEST(RaftTest, HasTest) {
 }
 
 TEST(RaftTest, RangeTest) {
-  std::shared_ptr<KvStore> s = std::make_shared<KvStore>();
-  auto log = buildLog(s);
+  auto r = buildLog();
+  auto log = r.first;
   {
     auto res = log->Get(1);
     EXPECT_TRUE(!res.first.ok());
@@ -789,6 +789,146 @@ TEST(RaftTest, SpliceOverlapTest) {
     auto res = log->GetLast();
     EXPECT_EQ(3, res.first);
     EXPECT_EQ(3, res.second);
+  }
+}
+
+TEST(RaftTest, TruncateTest) {
+  auto r = buildLog();
+  auto log = r.first;
+  Entry e1;
+  e1.set_term(1);
+  e1.set_command("1");
+  Entry e2;
+  e2.set_term(2);
+  e2.set_command("2");
+  Entry e3;
+  e3.set_term(3);
+  e3.set_command("3");
+  std::vector<Entry *> es{&e1, &e2, &e3};
+  for (auto e : es) {
+    auto res = log->Append(*e);
+    EXPECT_TRUE(res.first.ok());
+  }
+  {
+    auto res = log->Truncate(2);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(2, res.second);
+  }
+  es = {&e1, &e2};
+  for (int i = 0; i < es.size(); i++) {
+    auto res = log->Get(i + 1);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(es[i]->term(), res.second->term());
+    EXPECT_EQ(es[i]->command(), res.second->command());
+  }
+  {
+    auto res = log->Get(3);
+    EXPECT_FALSE(res.first.ok());
+  }
+  {
+    auto res = log->GetLast();
+    EXPECT_EQ(2, res.first);
+    EXPECT_EQ(2, res.second);
+  }
+}
+
+TEST(RaftTest, TruncateBeyondTest) {
+  auto r = buildLog();
+  auto log = r.first;
+  Entry e1;
+  e1.set_term(1);
+  e1.set_command("1");
+  Entry e2;
+  e2.set_term(2);
+  e2.set_command("2");
+  Entry e3;
+  e3.set_term(3);
+  e3.set_command("3");
+  std::vector<Entry *> es{&e1, &e2, &e3};
+  for (auto e : es) {
+    auto res = log->Append(*e);
+    EXPECT_TRUE(res.first.ok());
+  }
+  {
+    auto res = log->Truncate(4);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(3, res.second);
+  }
+  for (int i = 0; i < es.size(); i++) {
+    auto res = log->Get(i + 1);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(es[i]->term(), res.second->term());
+    EXPECT_EQ(es[i]->command(), res.second->command());
+  }
+  {
+    auto res = log->Get(4);
+    EXPECT_FALSE(res.first.ok());
+  }
+  {
+    auto res = log->GetLast();
+    EXPECT_EQ(3, res.first);
+    EXPECT_EQ(3, res.second);
+  }
+}
+
+TEST(RaftTest, TruncateCommittedTest) {
+  auto r = buildLog();
+  auto log = r.first;
+  Entry e1;
+  e1.set_term(1);
+  e1.set_command("1");
+  Entry e2;
+  e2.set_term(2);
+  e2.set_command("2");
+  Entry e3;
+  e3.set_term(3);
+  e3.set_command("3");
+  std::vector<Entry *> es{&e1, &e2, &e3};
+  for (auto e : es) {
+    auto res = log->Append(*e);
+    EXPECT_TRUE(res.first.ok());
+  }
+  {
+    auto res = log->Commit(2);
+    EXPECT_TRUE(std::get<0>(res).ok());
+  }
+  {
+    auto res = log->Truncate(1);
+    EXPECT_FALSE(res.first.ok());
+  }
+  {
+    auto res = log->Truncate(2);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(2, res.second);
+  }
+}
+
+TEST(RaftTest, TruncateZeroTest) {
+  auto r = buildLog();
+  auto log = r.first;
+  Entry e1;
+  e1.set_term(1);
+  e1.set_command("1");
+  Entry e2;
+  e2.set_term(2);
+  e2.set_command("2");
+  Entry e3;
+  e3.set_term(3);
+  e3.set_command("3");
+  std::vector<Entry *> es{&e1, &e2, &e3};
+  for (auto e : es) {
+    auto res = log->Append(*e);
+    EXPECT_TRUE(res.first.ok());
+  }
+  {
+    auto res = log->Truncate(0);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(0, res.second);
+  }
+  es = {&e1, &e2};
+  for (int i = 0; i < es.size(); i++) {
+    auto res = log->Get(i + 1);
+    EXPECT_FALSE(res.first.ok());
   }
 }
 
