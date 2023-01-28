@@ -528,18 +528,267 @@ TEST(RaftTest, SpliceTest) {
     EXPECT_EQ(4, res.second);
   }
   std::vector<Entry *> es{&e1, &e2, &e3, &e4};
-  {
-    for (int i = 0; i < es.size(); i++) {
-      auto res = log->Get(i + 1);
-      EXPECT_TRUE(res.first.ok());
-      EXPECT_EQ(es[i]->term(), res.second->term());
-      EXPECT_EQ(es[i]->command(), res.second->command());
-    }
+  for (int i = 0; i < es.size(); i++) {
+    auto res = log->Get(i + 1);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(es[i]->term(), res.second->term());
+    EXPECT_EQ(es[i]->command(), res.second->command());
   }
   {
     auto res = log->GetLast();
     EXPECT_EQ(4, res.first);
     EXPECT_EQ(4, res.second);
+  }
+}
+
+TEST(RaftTest, SpliceAllTest) {
+  auto r = buildLog();
+  auto log = r.first;
+  Entry e1;
+  e1.set_term(1);
+  e1.set_command("1");
+  Entry e2;
+  e2.set_term(2);
+  e2.set_command("2");
+  Entry e3;
+  e3.set_term(3);
+  e3.set_command("3");
+  std::vector<Entry *> es{&e1, &e2, &e3};
+  for (auto e : es) {
+    auto res = log->Append(*e);
+    EXPECT_TRUE(res.first.ok());
+  }
+  Entry e4;
+  e4.set_term(4);
+  e4.set_command("10");
+  Entry e4b;
+  e4b.set_term(4);
+  e4b.set_command("11");
+  {
+    std::vector<Entry *> ts{&e4, &e4b};
+    auto res = log->Splice(0, 0, ts);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(2, res.second);
+  }
+
+  es = {&e4, &e4b};
+  for (int i = 0; i < es.size(); i++) {
+    auto res = log->Get(i + 1);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(es[i]->term(), res.second->term());
+    EXPECT_EQ(es[i]->command(), res.second->command());
+  }
+  {
+    auto res = log->GetLast();
+    EXPECT_EQ(2, res.first);
+    EXPECT_EQ(4, res.second);
+  }
+}
+
+TEST(RaftTest, SpliceAppendTest) {
+  auto r = buildLog();
+  auto log = r.first;
+  Entry e1;
+  e1.set_term(1);
+  e1.set_command("1");
+  Entry e2;
+  e2.set_term(2);
+  e2.set_command("2");
+
+  std::vector<Entry *> es{&e1, &e2};
+  for (auto e : es) {
+    auto res = log->Append(*e);
+    EXPECT_TRUE(res.first.ok());
+  }
+  Entry e3;
+  e3.set_term(3);
+  e3.set_command("3");
+  Entry e4;
+  e4.set_term(4);
+  e4.set_command("4");
+  {
+    es = {&e3, &e4};
+    auto res = log->Splice(2, 2, es);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(4, res.second);
+  }
+
+  es = {&e1, &e2, &e3, &e4};
+  for (int i = 0; i < es.size(); i++) {
+    auto res = log->Get(i + 1);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(es[i]->term(), res.second->term());
+    EXPECT_EQ(es[i]->command(), res.second->command());
+  }
+  {
+    auto res = log->GetLast();
+    EXPECT_EQ(4, res.first);
+    EXPECT_EQ(4, res.second);
+  }
+}
+
+TEST(RaftTest, SpliceBaseMissingTest) {
+  auto r = buildLog();
+  auto log = r.first;
+  Entry e1;
+  e1.set_term(1);
+  e1.set_command("1");
+  Entry e2;
+  e2.set_term(2);
+  e2.set_command("2");
+
+  std::vector<Entry *> es{&e1, &e2};
+  for (auto e : es) {
+    auto res = log->Append(*e);
+    EXPECT_TRUE(res.first.ok());
+  }
+  Entry e4;
+  e4.set_term(4);
+  e4.set_command("4");
+  {
+    std::vector<Entry *> ts{&e4};
+    auto res = log->Splice(3, 3, ts);
+    EXPECT_FALSE(res.first.ok());
+  }
+
+  for (int i = 0; i < es.size(); i++) {
+    auto res = log->Get(i + 1);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(es[i]->term(), res.second->term());
+    EXPECT_EQ(es[i]->command(), res.second->command());
+  }
+  {
+    auto res = log->GetLast();
+    EXPECT_EQ(2, res.first);
+    EXPECT_EQ(2, res.second);
+  }
+}
+
+TEST(RaftTest, SpliceBaseTermConflictTest) {
+  auto r = buildLog();
+  auto log = r.first;
+  Entry e1;
+  e1.set_term(1);
+  e1.set_command("1");
+  Entry e2;
+  e2.set_term(2);
+  e2.set_command("2");
+
+  std::vector<Entry *> es{&e1, &e2};
+  for (auto e : es) {
+    auto res = log->Append(*e);
+    EXPECT_TRUE(res.first.ok());
+  }
+  Entry e4;
+  e4.set_term(4);
+  e4.set_command("4");
+  {
+    std::vector<Entry *> ts{&e4};
+    auto res = log->Splice(3, 3, ts);
+    EXPECT_FALSE(res.first.ok());
+  }
+  {
+    std::vector<Entry *> ts{&e4};
+    auto res = log->Splice(2, 0, ts);
+    EXPECT_FALSE(res.first.ok());
+  }
+
+  for (int i = 0; i < es.size(); i++) {
+    auto res = log->Get(i + 1);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(es[i]->term(), res.second->term());
+    EXPECT_EQ(es[i]->command(), res.second->command());
+  }
+  {
+    auto res = log->GetLast();
+    EXPECT_EQ(2, res.first);
+    EXPECT_EQ(2, res.second);
+  }
+}
+
+TEST(RaftTest, SpliceConflictTest) {
+  auto r = buildLog();
+  auto log = r.first;
+  Entry e1;
+  e1.set_term(1);
+  e1.set_command("1");
+  Entry e2;
+  e2.set_term(2);
+  e2.set_command("2");
+  Entry e3;
+  e3.set_term(3);
+  e3.set_command("3");
+  Entry e4;
+  e4.set_term(4);
+  e4.set_command("4");
+  std::vector<Entry *> es{&e1, &e2, &e3, &e4};
+  for (auto e : es) {
+    auto res = log->Append(*e);
+    EXPECT_TRUE(res.first.ok());
+  }
+
+  Entry e3b;
+  e3b.set_term(3);
+  e3b.set_command("b");
+  Entry e3c;
+  e3c.set_term(3);
+  e3c.set_command("c");
+
+  es = {&e3b, &e3c};
+  {
+    auto res = log->Splice(1, 1, es);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(3, res.second);
+  }
+  es = {&e1, &e3b, &e3c};
+  for (int i = 0; i < es.size(); i++) {
+    auto res = log->Get(i + 1);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(es[i]->term(), res.second->term());
+    EXPECT_EQ(es[i]->command(), res.second->command());
+  }
+  {
+    auto res = log->GetLast();
+    EXPECT_EQ(3, res.first);
+    EXPECT_EQ(3, res.second);
+  }
+}
+
+TEST(RaftTest, SpliceOverlapTest) {
+  auto r = buildLog();
+  auto log = r.first;
+  Entry e1;
+  e1.set_term(1);
+  e1.set_command("1");
+  Entry e2;
+  e2.set_term(2);
+  e2.set_command("2");
+  Entry e3;
+  e3.set_term(3);
+  e3.set_command("3");
+  std::vector<Entry *> es{&e1, &e2, &e3};
+  for (auto e : es) {
+    auto res = log->Append(*e);
+    EXPECT_TRUE(res.first.ok());
+  }
+
+  es = {&e2};
+  {
+    auto res = log->Splice(1, 1, es);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(3, res.second);
+  }
+  es = {&e1, &e2, &e3};
+  for (int i = 0; i < es.size(); i++) {
+    auto res = log->Get(i + 1);
+    EXPECT_TRUE(res.first.ok());
+    EXPECT_EQ(es[i]->term(), res.second->term());
+    EXPECT_EQ(es[i]->command(), res.second->command());
+  }
+  {
+    auto res = log->GetLast();
+    EXPECT_EQ(3, res.first);
+    EXPECT_EQ(3, res.second);
   }
 }
 

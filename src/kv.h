@@ -2,8 +2,7 @@
 // Created by elf on 5/1/23.
 //
 
-#ifndef MYTOYDB_KV_H
-#define MYTOYDB_KV_H
+#pragma once
 #include <absl/container/btree_map.h>
 #include <absl/status/status.h>
 #include <cstdint>
@@ -26,5 +25,3 @@ private:
 };
 
 } // namespace toydb
-
-#endif // MYTOYDB_KV_H

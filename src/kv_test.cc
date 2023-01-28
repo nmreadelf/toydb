@@ -40,12 +40,12 @@ TEST(StoreTest, Set) {
   std::vector<std::string> values{"1", "2", "3"};
 
   KvStore s;
-  for (int i = 0; i < values.size(); i++) {
-    s.Set(key, values[i]);
+  for (const auto &value : values) {
+    s.Set(key, value);
     std::string v;
     auto st = s.Get(key, &v);
     EXPECT_TRUE(st.ok());
-    EXPECT_EQ(v, values[i]);
+    EXPECT_EQ(v, value);
   }
 }
 } // namespace toydb

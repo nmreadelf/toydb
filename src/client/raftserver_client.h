@@ -2,8 +2,7 @@
 // Created by elf on 9/1/23.
 //
 
-#ifndef MYTOYDB_RAFTSERVER_CLIENT_H
-#define MYTOYDB_RAFTSERVER_CLIENT_H
+#pragma once
 #include "proto/raft.grpc.pb.h"
 #include <grpc/grpc.h>
 #include <grpcpp/channel.h>
@@ -18,17 +17,15 @@ class RaftServerClientImpl {
 public:
   RaftServerClientImpl(const std::string &addr) : addr_(addr) {
     channel_ = grpc::CreateChannel(addr_, grpc::InsecureChannelCredentials());
-    stub_ = RaftServer::NewStub(channel_);
+    stub_ = raft::RaftServer::NewStub(channel_);
   };
 
-  Status Step(::Message *msg);
+  Status Step(raft::Message *msg);
 
 private:
   std::string addr_;
   std::shared_ptr<grpc::Channel> channel_;
-  std::unique_ptr<RaftServer::Stub> stub_;
+  std::unique_ptr<raft::RaftServer::Stub> stub_;
 };
 
 } // namespace
-
-#endif // MYTOYDB_RAFTSERVER_CLIENT_H

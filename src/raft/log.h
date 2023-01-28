@@ -2,16 +2,16 @@
 // Created by elf on 9/1/23.
 //
 
-#ifndef MYTOYDB_LOG_H
-#define MYTOYDB_LOG_H
+#pragma once
 #include "kv.h"
 #include "proto/raft.pb.h"
 #include "state.h"
+#include <absl/status/status.h>
 #include <memory>
 #include <utility>
 
+using absl::Status;
 using raft::Entry;
-using toydb::Status;
 
 namespace toydb::raft {
 class Log {
@@ -99,5 +99,3 @@ private:
 };
 
 } // namespace toydb::raft
-
-#endif // MYTOYDB_LOG_H

@@ -7,9 +7,9 @@ using ::grpc::ClientContext;
 using ::grpc::Status;
 
 namespace {
-Status RaftServerClientImpl::Step(::Message *msg) {
+Status RaftServerClientImpl::Step(raft::Message *msg) {
   ClientContext ctx;
-  Success sucs;
+  raft::Success sucs;
   return stub_->Step(&ctx, *msg, &sucs);
 }
 

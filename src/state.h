@@ -2,9 +2,7 @@
 // Created by kongsys on 15/1/23.
 //
 
-#ifndef MYTOYDB_STATE_H
-#define MYTOYDB_STATE_H
-
+#pragma once
 #include "kv.h"
 
 #include <absl/status/status.h>
@@ -41,5 +39,3 @@ private:
 };
 
 } // namespace toydb
-
-#endif // MYTOYDB_STATE_H

@@ -171,21 +171,19 @@ std::pair<Status, uint64_t> Log::Splice(uint64_t base, uint64_t base_term,
         0);
   }
 
-  uint64_t i = 0;
   for (int i = 0; i < entrys.size(); i++) {
     const auto &e = entrys[i];
     auto res = Get(base + i + 1);
-    if (!res.first.ok()) {
-      Append(*e);
-      continue;
+    if (res.first.ok()) {
+      if (res.second->term() == e->term()) {
+        continue;
+      }
+      auto ok = Truncate(base + i);
+      if (!ok.first.ok()) {
+        return ok;
+      }
     }
-    if (res.second->term() == e->term()) {
-      continue;
-    }
-    auto ok = Truncate(base + i);
-    if (!ok.first.ok()) {
-      return ok;
-    }
+    auto r = Append(*e);
   }
   return std::make_pair(absl::OkStatus(), last_index_);
 }
@@ -206,7 +204,7 @@ std::pair<Status, uint64_t> Log::Truncate(uint64_t index) {
   last_index_ = std::min(index, last_index_);
   auto res = Get(last_index_);
   if (!res.first.ok()) {
-    return std::make_pair(res.first, 0);
+    return std::make_pair(absl::OkStatus(), 0);
   }
   last_term_ = res.second->term();
   return std::make_pair(absl::OkStatus(), last_index_);
