@@ -415,11 +415,6 @@ TEST(RaftTest, RangeTest) {
   auto r = buildLog();
   auto log = r.first;
   {
-    auto res = log->Get(1);
-    EXPECT_TRUE(!res.first.ok());
-    EXPECT_EQ(res.second, nullptr);
-  }
-  {
     Entry e;
     e.set_term(1);
     std::vector<std::string> cmds{"1", "2", "3"};
@@ -428,28 +423,22 @@ TEST(RaftTest, RangeTest) {
       auto res = log->Append(e);
       EXPECT_TRUE(res.first.ok());
     }
-    log->Range(0);
-    for (const auto &c : cmds) {
-      e.set_command(c);
-      auto res = log->Append(e);
-      EXPECT_TRUE(res.first.ok());
-    }
   }
   {
-    EXPECT_TRUE(log->Has(1, 2));
-    EXPECT_TRUE(log->Has(0, 0));
-    EXPECT_FALSE(log->Has(0, 1));
-    EXPECT_FALSE(log->Has(1, 0));
-    EXPECT_FALSE(log->Has(1, 3));
-    EXPECT_FALSE(log->Has(2, 0));
-    EXPECT_FALSE(log->Has(2, 1));
+    auto res = log->Range(0);
+    int i = 1;
+    for (const auto c : *res) {
+      EXPECT_EQ(1, c->term());
+      EXPECT_EQ(std::to_string(i), c->command());
+      i++;
+    }
   }
 }
 
 TEST(RaftTest, LoadSaveTermTest) {
-  std::shared_ptr<KvStore> s = std::make_shared<KvStore>();
+  auto r = buildLog();
   {
-    auto log = buildLog(s);
+    auto log = buildLog(r.second);
     {
       auto res = log->LoadTerm();
       EXPECT_TRUE(std::get<0>(res).ok());
@@ -461,7 +450,7 @@ TEST(RaftTest, LoadSaveTermTest) {
     EXPECT_TRUE(res.ok());
   }
   {
-    auto log = buildLog(s);
+    auto log = buildLog(r.second);
     {
       auto res = log->LoadTerm();
       EXPECT_TRUE(std::get<0>(res).ok());
@@ -473,7 +462,7 @@ TEST(RaftTest, LoadSaveTermTest) {
     EXPECT_TRUE(res.ok());
   }
   {
-    auto log = buildLog(s);
+    auto log = buildLog(r.second);
     {
       auto res = log->LoadTerm();
       EXPECT_TRUE(std::get<0>(res).ok());
@@ -485,7 +474,7 @@ TEST(RaftTest, LoadSaveTermTest) {
     EXPECT_TRUE(res.ok());
   }
   {
-    auto log = buildLog(s);
+    auto log = buildLog(r.second);
     auto res = log->LoadTerm();
     EXPECT_TRUE(std::get<0>(res).ok());
     EXPECT_EQ(0, std::get<1>(res));

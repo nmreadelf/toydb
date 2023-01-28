@@ -152,11 +152,11 @@ bool Log::Has(uint64_t index, uint64_t term) {
 }
 std::shared_ptr<std::vector<std::shared_ptr<Entry>>>
 Log::Range(uint64_t start) {
-  auto es = std::shared_ptr<std::vector<std::shared_ptr<Entry>>>();
+  auto es = std::make_shared<std::vector<std::shared_ptr<Entry>>>();
   for (uint64_t i : std::ranges::iota_view{start, last_index_ + 1}) {
     auto res = Get(i);
     if (res.first.ok()) {
-      es->push_back(std::shared_ptr<Entry>(res.second));
+      es->push_back(res.second);
     }
   }
   return es;
