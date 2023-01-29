@@ -4,23 +4,21 @@
 
 #pragma once
 #include "kv.h"
+#include "status.h"
 
-#include <absl/status/status.h>
 #include <string>
-
-using absl::Status;
 
 namespace toydb {
 class State {
 public:
-  virtual std::pair<Status, std::string> Mutate(const std::string &cmd) = 0;
+  virtual Status<std::string> Mutate(const std::string &cmd) = 0;
 };
 
 class KvState : public State {
 public:
   KvState() { kv_ = std::make_shared<KvStore>(); }
 
-  std::pair<Status, std::string> Mutate(const std::string &cmd);
+  Status<std::string> Mutate(const std::string &cmd) override;
 
 private:
   std::shared_ptr<KvStore> kv_;
@@ -30,7 +28,7 @@ class TestState : public State {
 public:
   TestState() : cmds_() {}
 
-  std::pair<Status, std::string> Mutate(const std::string &cmd);
+  Status<std::string> Mutate(const std::string &cmd) override;
 
   std::vector<std::string> List();
 

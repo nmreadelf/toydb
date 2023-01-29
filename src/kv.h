@@ -3,20 +3,19 @@
 //
 
 #pragma once
+#include "status.h"
 #include <absl/container/btree_map.h>
-#include <absl/status/status.h>
 #include <cstdint>
 #include <string>
 
 namespace toydb {
-using ::absl::Status;
 class KvStore {
 public:
   KvStore() : data_() {}
 
   void Delete(const std::string &key);
 
-  Status Get(const std::string &key, std::string *value);
+  Status<std::string *> Get(const std::string &key, std::string *value);
 
   void Set(const std::string &key, const std::string &value);
 

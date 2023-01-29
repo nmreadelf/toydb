@@ -14,16 +14,24 @@ TEST(StoreTest, Delete) {
   std::string value = "1";
   s.Set(key, value);
   std::string t;
-  auto st = s.Get(key, &t);
-  EXPECT_TRUE(st.ok());
-  EXPECT_EQ(value, t);
+  {
+    auto st = s.Get(key, &t);
+    EXPECT_TRUE(st.ok());
+    EXPECT_EQ(value, t);
+  }
 
   s.Delete(key);
-  st = s.Get(key, &t);
-  EXPECT_TRUE(IsNotFound(st));
-  st = s.Get("b", &t);
-  EXPECT_TRUE(IsNotFound(st));
+  {
+
+    auto st = s.Get(key, &t);
+    EXPECT_FALSE(st.ok());
+  }
+  {
+    auto st = s.Get("b", &t);
+    EXPECT_FALSE(st.ok());
+  }
 }
+
 TEST(StoreTest, Get) {
   KvStore s;
   std::string key = "a";
@@ -48,6 +56,7 @@ TEST(StoreTest, Set) {
     EXPECT_EQ(v, value);
   }
 }
+
 } // namespace toydb
 
 int main(int argc, char **argv) {

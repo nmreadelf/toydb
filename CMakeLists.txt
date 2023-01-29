@@ -44,10 +44,10 @@ target_link_libraries(toydb_grpc_proto
         ${_GRPC_GRPCPP}
         ${_PROTOBUF_LIBPROTOBUF})
 
-add_library(kv "${PROJECT_SOURCE_DIR}/src/kv.cc" "${PROJECT_SOURCE_DIR}/src/kv.h" src/state.cc src/state.h)
+add_library(kv "${PROJECT_SOURCE_DIR}/src/kv.cc" "${PROJECT_SOURCE_DIR}/src/kv.h" src/state.cc src/state.h src/status.h)
 target_link_libraries(kv absl::any absl::status)
 
-add_library(raft "${PROJECT_SOURCE_DIR}/src/raft/log.cc")
+add_library(raft "${PROJECT_SOURCE_DIR}/src/raft/log.cc" src/status.h)
 target_link_libraries(raft absl::any toydb_grpc_proto
         gRPC::gpr gRPC::grpc gRPC::grpc++ gRPC::grpc++_alts gRPC::grpc++_reflection
         )
@@ -58,7 +58,7 @@ target_link_libraries(kv_test kv GTest::gtest GTest::gtest_main absl::any absl::
 add_executable(raftlog_test "${PROJECT_SOURCE_DIR}/src/raft/log_test.cc")
 target_link_libraries(raftlog_test absl::any absl::base absl::bits absl::city absl::status kv GTest::gtest GTest::gtest_main raft)
 
-add_executable(toydb "${PROJECT_SOURCE_DIR}/src/bin/toydb.cc" "${PROJECT_SOURCE_DIR}/src/server/toydb_imp.cc" "${PROJECT_SOURCE_DIR}/src/server/raftserver_impl.cc" "${PROJECT_SOURCE_DIR}/src/client/raftserver_client.cc")
+add_executable(toydb "${PROJECT_SOURCE_DIR}/src/bin/toydb.cc" "${PROJECT_SOURCE_DIR}/src/server/toydb_imp.cc" "${PROJECT_SOURCE_DIR}/src/server/raftserver_impl.cc" "${PROJECT_SOURCE_DIR}/src/client/raftserver_client.cc" src/status.h)
 target_link_libraries(toydb toydb_grpc_proto
         gRPC::gpr gRPC::grpc gRPC::grpc++ gRPC::grpc++_alts gRPC::grpc++_reflection
         absl::any absl::base absl::bits absl::city absl::flags absl::flags_parse absl::flags_config)

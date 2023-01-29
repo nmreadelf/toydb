@@ -6,13 +6,13 @@
 namespace toydb {
 void KvStore::Delete(const std::string &key) { data_.erase(key); }
 
-Status KvStore::Get(const std::string &key, std::string *value) {
+Status<std::string *> KvStore::Get(const std::string &key, std::string *value) {
   auto iter = data_.find(key);
   if (iter == data_.end()) {
-    return absl::NotFoundError(key);
+    return Status<std::string *>(std::move(key + " not found"));
   }
   value->assign(iter->second.data(), iter->second.size());
-  return absl::OkStatus();
+  return OkWithValue(value);
 }
 
 void KvStore::Set(const std::string &key, const std::string &value) {
