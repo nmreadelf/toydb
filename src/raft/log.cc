@@ -19,7 +19,6 @@ Status<Log *> Log::Build(std::shared_ptr<toydb::KvStore> s) {
   v.resize(n);
   // decode uint64_t
   {
-
     auto ok = s->Get("apply_index", &v);
     ok.deleateable_ = false;
     char *rbuffer = reinterpret_cast<char *>(&(v[0]));
