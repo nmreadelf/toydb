@@ -20,7 +20,7 @@ Status<std::string> KvState::Mutate(const std::string &cmd) {
 
 Status<std::string> TestState::Mutate(const std::string &cmd) {
   cmds_.push_back(cmd);
-  return OkWithValue(std::move(std::string(cmd)));
+  return OkWithValue(std::string(cmd));
 }
 
 std::vector<std::string> TestState::List() { return cmds_; }

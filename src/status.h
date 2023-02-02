@@ -8,59 +8,64 @@
 namespace toydb {
 template <typename T> struct Status {
   bool ok_;
-  bool deleateable_ = true;
   union {
     std::string message_;
     T value_;
   };
 
-  Status() : ok_(true), value_() {}
+  Status() : ok_(false), message_() {}
 
-  explicit Status(std::string msg) : ok_(false), message_(std::move(msg)) {}
-
-  Status(Status const &status) : ok_(status.ok_) {
+  ~Status() {
     if (ok_) {
-      value_ = std::move(status.value_);
+      value_.~T();
     } else {
-      message_ = std::move(status.message_);
+      message_.~basic_string();
     }
   }
 
-  Status &operator=(Status const &other) {
-    ok_ = other.ok_;
+  explicit Status(std::string msg) : ok_(false), message_(std::move(msg)) {}
+
+  Status(Status const &rhs) : ok_(rhs.ok_) {
     if (ok_) {
-      value_ = std::move(other.value_);
+      value_ = rhs.value_;
     } else {
-      message_ = std::move(other.message_);
+      message_ = rhs.message_;
+    }
+  }
+
+  Status &operator=(Status const &rhs) {
+    if (ok_) {
+      if (std::is_pointer_v<T>) {
+        delete value_;
+      } else {
+        value_ = rhs.value_;
+      }
+      value_.~T();
+    } else {
+      message_.~basic_string();
+    }
+    ok_ = rhs.ok_;
+    if (ok_) {
+      value_ = rhs.value_;
+    } else {
+      message_ = rhs.message_;
     }
 
     return *this;
   }
 
-  Status(Status &&other) noexcept {
-    ok_ = other.ok_;
-    if (ok_) {
-      value_ = std::move(other.value_);
-      if (std::is_pointer<T>::value) {
-        other.deleateable_ = false;
-      }
-    } else {
-      message_ = std::move(other.message_);
-    }
-  }
-
-  ~Status() {
-    if (!ok_) {
-      message_.~basic_string();
-    } else if (deleateable_) {
-      value_.~T();
-    }
+  Status &operator=(Status &&rhs) noexcept {
+    std::swap(value_, rhs.value_);
+    std::swap(ok_, rhs.ok_);
+    return *this;
   }
 
   bool ok() { return ok_; }
 };
+
 template <typename T> Status<T> OkWithValue(T v) {
   Status<T> s;
+  s.ok_ = true;
   s.value_ = v;
   return s;
 }

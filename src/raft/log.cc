@@ -20,7 +20,6 @@ Status<Log *> Log::Build(std::shared_ptr<toydb::KvStore> s) {
   // decode uint64_t
   {
     auto ok = s->Get("apply_index", &v);
-    ok.deleateable_ = false;
     char *rbuffer = reinterpret_cast<char *>(&(v[0]));
     if (ok.ok()) {
       memcpy(static_cast<void *>(&apply_index), rbuffer, n);
@@ -29,7 +28,6 @@ Status<Log *> Log::Build(std::shared_ptr<toydb::KvStore> s) {
 
   {
     auto ok = s->Get(std::to_string(apply_index), &v);
-    ok.deleateable_ = false;
     if (ok.ok()) {
       Entry e;
       bool st = e.ParseFromString(v);
@@ -52,7 +50,6 @@ Status<Log *> Log::Build(std::shared_ptr<toydb::KvStore> s) {
     if (!ok.ok()) {
       break;
     }
-    ok.deleateable_ = false;
     Entry e;
     bool st = e.ParseFromString(v);
     if (!st) {
@@ -154,7 +151,6 @@ Log::Range(uint64_t start) {
     auto res = Get(i);
     if (res.ok()) {
       es->push_back(std::shared_ptr<Entry>(res.value_));
-      res.deleateable_ = false;
     }
   }
   return es;
@@ -207,7 +203,6 @@ Status<uint64_t> Log::Truncate(uint64_t index) {
 Status<std::tuple<uint64_t, std::string>> Log::LoadTerm() {
   std::string v;
   auto ok = kv_->Get("term", &v);
-  ok.deleateable_ = false;
   if (!ok.ok()) {
     return OkWithValue(std::make_tuple(uint64_t(0), std::string()));
   }
@@ -239,7 +234,7 @@ Status<nullptr_t> Log::SaveTerm(uint64_t term, std::string &vote_for) {
   } else {
     kv_->Set("voted_for", vote_for);
   }
-  return {};
+  return OkWithValue(nullptr);
 }
 
 } // namespace toydb::raft

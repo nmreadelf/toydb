@@ -9,14 +9,12 @@ std::pair<std::shared_ptr<Log>, std::shared_ptr<KvStore>> buildLog() {
   std::shared_ptr<KvStore> s(new KvStore);
   auto res = Log::Build(s);
   EXPECT_TRUE(res.ok());
-  res.deleateable_ = false;
   return std::make_pair(std::shared_ptr<Log>(res.value_), s);
 }
 
 std::shared_ptr<Log> buildLog(std::shared_ptr<KvStore> &s) {
   auto res = Log::Build(s);
   EXPECT_TRUE(res.ok());
-  res.deleateable_ = false;
   std::shared_ptr<Log> log(res.value_);
   return log;
 }
