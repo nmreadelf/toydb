@@ -9,6 +9,7 @@ std::pair<std::shared_ptr<Log>, std::shared_ptr<KvStore>> buildLog() {
   std::shared_ptr<KvStore> s(new KvStore);
   auto res = Log::Build(s);
   EXPECT_TRUE(res.ok());
+  res.SetMoved();
   return std::make_pair(std::shared_ptr<Log>(res.value_), s);
 }
 
