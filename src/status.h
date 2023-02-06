@@ -59,18 +59,14 @@ public:
   Status &operator=(Error &&e) {
     switch (state_) {
     case kOk:
-      if (std::is_pointer_v<T>) {
-        delete value_;
-      } else {
-        value_.~T();
-      }
+      value_.~T();
       break;
     case kError:
       error_.~Error();
       break;
     }
     state_ = kError;
-    error_ = std::move(e);
+    new (&error_) Error(std::move(e));
 
     return *this;
   }
@@ -78,24 +74,20 @@ public:
   Status &operator=(T &&v) {
     switch (state_) {
     case kOk:
-      if (std::is_pointer_v<T>) {
-        delete value_;
-      } else {
-        value_.~T();
-      }
+      value_.~T();
       break;
     case kError:
       error_.~Error();
       break;
     }
     state_ = kError;
-    value_ = std::move(v);
+    new (&value_) T(std::move(v));
 
     return *this;
   }
 
   Status(Status const &rhs) : state_(rhs.state_) {
-    if (state_) {
+    if (state_ == kOk) {
       value_ = rhs.value_;
     } else {
       error_ = rhs.error_;
@@ -105,22 +97,19 @@ public:
   Status &operator=(Status const &rhs) {
     switch (state_) {
     case kOk:
-      if (std::is_pointer_v<T>) {
-        delete value_;
-      } else {
-        value_.~T();
-      }
+      value_.~T();
       break;
     case kError:
       error_.~Error();
       break;
     }
-    switch (rhs.state_) {
+    state_ = rhs.state_;
+    switch (state_) {
     case kOk:
-      value_ = rhs.value_;
+      new (&value_) T(rhs.value_);
       break;
     case kError:
-      error_ = rhs.error_;
+      new (&error_) Error(rhs.error_);
       break;
     }
     state_ = rhs.state_;
@@ -128,14 +117,21 @@ public:
     return *this;
   }
 
-  Status &operator=(Status &&rhs) {
-    switch (rhs.state_) {
+  Status &operator=(Status &&rhs) noexcept {
+    switch (state_) {
     case kOk:
       value_.~T();
-      value_ = std::move(rhs.value_);
       break;
     case kError:
-      error_ = std::move(rhs.error_);
+      error_.~Error();
+      break;
+    }
+    switch (rhs.state_) {
+    case kOk:
+      new (&value_) T(std::move(rhs.value_));
+      break;
+    case kError:
+      new (&error_) Error(std::move(rhs.error_));
       break;
     default: {
       state_ = kError;
@@ -143,7 +139,7 @@ public:
       return *this;
     }
     }
-    state_ = std::move(rhs.state_);
+    state_ = rhs.state_;
     rhs.state_ = kMoved;
     return *this;
   }
