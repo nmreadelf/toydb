@@ -6,11 +6,26 @@
 #include <utility>
 
 namespace toydb {
+struct Error {
+  std::string msg_;
+
+  explicit Error(const std::string &m) : msg_(m) {}
+
+  explicit Error(std::string &&m) : msg_(std::move(m)) {}
+
+  Error &operator=(std::string &&m) {
+    msg_ = m;
+
+    return *this;
+  }
+};
 
 template <typename T> struct Status {
+
   enum Code { kOk = 0, kError = 1, kMoved = 2 };
+
   union {
-    std::string message_;
+    Error error_;
     T value_;
   };
 
@@ -18,7 +33,7 @@ private:
   Code state_;
 
 public:
-  explicit Status(Code code = kError) : state_(code), message_() {}
+  // explicit Status(Code code = kError) : state_(code), error_("") {}
 
   ~Status() {
     switch (state_) {
@@ -26,18 +41,64 @@ public:
       value_.~T();
       break;
     case kError:
-      message_.~basic_string();
+      error_.~Error();
       break;
     }
   }
 
-  explicit Status(std::string msg) : state_(kError), message_(std::move(msg)) {}
+  // explicit Status(Error e) : state_(kError), error_(std::move(e)) {}
+
+  // explicit Status(const Error &e) : state_(kError), error_(e) {}
+
+  Status(Error &&e) : state_(kError), error_(std::move(e)) {}
+
+  Status(const T &t) : state_(kOk), value_(t) {}
+
+  Status(T &&t) : state_(kOk), value_(std::move(t)) {}
+
+  Status &operator=(Error &&e) {
+    switch (state_) {
+    case kOk:
+      if (std::is_pointer_v<T>) {
+        delete value_;
+      } else {
+        value_.~T();
+      }
+      break;
+    case kError:
+      error_.~Error();
+      break;
+    }
+    state_ = kError;
+    error_ = std::move(e);
+
+    return *this;
+  }
+
+  Status &operator=(T &&v) {
+    switch (state_) {
+    case kOk:
+      if (std::is_pointer_v<T>) {
+        delete value_;
+      } else {
+        value_.~T();
+      }
+      break;
+    case kError:
+      error_.~Error();
+      break;
+    }
+    state_ = kError;
+    value_ = std::move(v);
+
+    return *this;
+  }
 
   Status(Status const &rhs) : state_(rhs.state_) {
     if (state_) {
       value_ = rhs.value_;
     } else {
-      message_ = rhs.message_;
+      error_ = rhs.error_;
     }
   }
 
@@ -51,7 +112,7 @@ public:
       }
       break;
     case kError:
-      message_.~basic_string();
+      error_.~Error();
       break;
     }
     switch (rhs.state_) {
@@ -59,7 +120,7 @@ public:
       value_ = rhs.value_;
       break;
     case kError:
-      message_ = rhs.message_;
+      error_ = rhs.error_;
       break;
     }
     state_ = rhs.state_;
@@ -74,11 +135,11 @@ public:
       value_ = std::move(rhs.value_);
       break;
     case kError:
-      message_ = std::move(rhs.message_);
+      error_ = std::move(rhs.error_);
       break;
     default: {
       state_ = kError;
-      message_ = "rhs is moved";
+      error_ = "rhs is moved";
       return *this;
     }
     }
@@ -92,9 +153,4 @@ public:
   void SetMoved() { state_ == kMoved; }
 };
 
-template <typename T> Status<T> OkWithValue(T v) {
-  Status<T> s(Status<T>::kOk);
-  s.value_ = v;
-  return s;
-}
 } // namespace toydb

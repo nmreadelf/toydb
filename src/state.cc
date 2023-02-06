@@ -15,12 +15,12 @@ Status<std::string> KvState::Mutate(const std::string &cmd) {
   rState s;
   s.ParseFromString(cmd);
   kv_->Set(s.key(), s.value());
-  return OkWithValue(std::string(""));
+  return {std::string("")};
 }
 
 Status<std::string> TestState::Mutate(const std::string &cmd) {
   cmds_.push_back(cmd);
-  return OkWithValue(cmd);
+  return {cmd};
 }
 
 std::vector<std::string> TestState::List() { return cmds_; }

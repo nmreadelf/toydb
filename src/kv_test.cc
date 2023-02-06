@@ -2,6 +2,7 @@
 // Created by elf on 5/1/23.
 //
 #include "kv.h"
+#include <coroutine>
 #include <gtest/gtest.h>
 
 using ::testing::InitGoogleTest;
@@ -16,7 +17,7 @@ TEST(StoreTest, Delete) {
   std::string t;
   {
     auto st = s.Get(key, &t);
-    EXPECT_TRUE(st.ok());
+    EXPECT_TRUE(st);
     EXPECT_EQ(value, t);
   }
 
@@ -24,11 +25,11 @@ TEST(StoreTest, Delete) {
   {
 
     auto st = s.Get(key, &t);
-    EXPECT_FALSE(st.ok());
+    EXPECT_FALSE(st);
   }
   {
     auto st = s.Get("b", &t);
-    EXPECT_FALSE(st.ok());
+    EXPECT_FALSE(st);
   }
 }
 
@@ -39,7 +40,7 @@ TEST(StoreTest, Get) {
   s.Set(key, value);
   std::string t;
   auto st = s.Get(key, &t);
-  EXPECT_TRUE(st.ok());
+  EXPECT_TRUE(st);
   EXPECT_EQ(value, t);
 }
 
@@ -52,7 +53,7 @@ TEST(StoreTest, Set) {
     s.Set(key, value);
     std::string v;
     auto st = s.Get(key, &v);
-    EXPECT_TRUE(st.ok());
+    EXPECT_TRUE(st);
     EXPECT_EQ(v, value);
   }
 }

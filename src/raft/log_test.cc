@@ -1,4 +1,5 @@
 #include "raft/log.h"
+#include <coroutine>
 #include <gtest/gtest.h>
 
 using ::testing::InitGoogleTest;

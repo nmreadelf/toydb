@@ -21,24 +21,24 @@ Status<Log *> Log::Build(std::shared_ptr<toydb::KvStore> s) {
   {
     auto ok = s->Get("apply_index", &v);
     char *rbuffer = reinterpret_cast<char *>(&(v[0]));
-    if (ok.ok()) {
+    if (ok) {
       memcpy(static_cast<void *>(&apply_index), rbuffer, n);
     }
   }
 
   {
     auto ok = s->Get(std::to_string(apply_index), &v);
-    if (ok.ok()) {
+    if (ok) {
       Entry e;
       bool st = e.ParseFromString(v);
       if (!st) {
-        return Status<Log *>("parse apply idx " + std::to_string(apply_index) +
-                             " fail");
+        return {
+            Error("parse apply idx " + std::to_string(apply_index) + " fail")};
       }
       commit_term = e.term();
     } else if (apply_index != 0) {
-      return Status<Log *>("Applied entry " + std::to_string(apply_index) +
-                           " not found");
+      return {
+          Error("Applied entry " + std::to_string(apply_index) + " not found")};
     }
   }
   commit_index = apply_index;
@@ -47,14 +47,13 @@ Status<Log *> Log::Build(std::shared_ptr<toydb::KvStore> s) {
   for (uint64_t i :
        std::ranges::iota_view(uint64_t(1)) | std::views::take(UINT64_MAX)) {
     auto ok = s->Get(std::to_string(i), &v);
-    if (!ok.ok()) {
+    if (!ok) {
       break;
     }
     Entry e;
     bool st = e.ParseFromString(v);
     if (!st) {
-      return Status<Log *>("parse entry " + std::to_string(apply_index) +
-                           " fail");
+      return {Error("parse entry " + std::to_string(apply_index) + " fail")};
     }
     last_index = i;
     last_term = e.term();
@@ -70,19 +69,19 @@ Status<Log *> Log::Build(std::shared_ptr<toydb::KvStore> s) {
    * memcpy(rbuffer, static_cast<void*>(&last_index_), n)
    */
 
-  return OkWithValue(log);
+  return {log};
 }
 
 Status<uint64_t> Log::Append(Entry &entry) {
   last_index_++;
   last_term_ = entry.term();
   kv_->Set(std::to_string(last_index_), entry.SerializeAsString());
-  return OkWithValue(last_index_);
+  return {last_index_};
 }
 
 Status<std::tuple<uint64_t, std::string>> Log::Apply(State *state) {
   if (apply_index_ >= commit_index_) {
-    return OkWithValue(std::make_tuple(uint64_t(0), std::string()));
+    return {std::make_tuple(uint64_t(0), std::string())};
   }
 
   std::string output;
@@ -102,7 +101,7 @@ Status<std::tuple<uint64_t, std::string>> Log::Apply(State *state) {
   char *buf = reinterpret_cast<char *>(&(v[0]));
   memcpy(buf, static_cast<void *>(&apply_index_), n);
   kv_->Set("apply_index", v);
-  return OkWithValue(std::make_tuple(apply_index_, std::move(output)));
+  return {std::make_tuple(apply_index_, std::move(output))};
 }
 
 Status<uint64_t> Log::Commit(uint64_t index) {
@@ -111,26 +110,26 @@ Status<uint64_t> Log::Commit(uint64_t index) {
   if (index != commit_index_) {
     auto res = Get(index);
     if (!res.ok()) {
-      return Status<uint64_t>("Entry at commit index " + std::to_string(index) +
-                              " does not exist");
+      return {Error("Entry at commit index " + std::to_string(index) +
+                    " does not exist")};
     }
     commit_index_ = index;
     commit_term_ = res.value_->term();
     std::shared_ptr<Entry> st(res.value_);
   }
 
-  return OkWithValue(index);
+  return {index};
 }
 
 Status<Entry *> Log::Get(uint64_t index) {
   std::string v;
   auto ok = kv_->Get(std::to_string(index), &v);
-  if (!ok.ok()) {
-    return Status<Entry *>(std::to_string(index) + " idx not found");
+  if (!ok) {
+    return {Error(std::to_string(index) + " idx not found")};
   }
   auto entry = new Entry();
   entry->ParseFromString(v);
-  return OkWithValue(entry);
+  return {entry};
 }
 
 bool Log::Has(uint64_t index, uint64_t term) {
@@ -159,8 +158,8 @@ Log::Range(uint64_t start) {
 Status<uint64_t> Log::Splice(uint64_t base, uint64_t base_term,
                              std::vector<Entry *> &entrys) {
   if (base > 0 && !Has(base, base_term)) {
-    return Status<uint64_t>("raft base " + std::to_string(base) + ":" +
-                            std::to_string(base_term) + " not found");
+    return {Error("raft base " + std::to_string(base) + ":" +
+                  std::to_string(base_term) + " not found")};
   }
 
   for (int i = 0; i < entrys.size(); i++) {
@@ -177,15 +176,17 @@ Status<uint64_t> Log::Splice(uint64_t base, uint64_t base_term,
     }
     Append(*e); // ignore Append result
   }
-  return OkWithValue(last_index_);
+  return {last_index_};
 }
 
 Status<uint64_t> Log::Truncate(uint64_t index) {
   if (index < apply_index_) {
-    return Status<uint64_t>("cannot remove applied log entry");
+    // return Status<uint64_t>("cannot remove applied log entry");
+    return {Error("cannot remove applied log entry")};
   }
   if (index < commit_index_) {
-    return Status<uint64_t>("cannot remove committed log entry");
+    // return Status<uint64_t>("cannot remove committed log entry");
+    return {Error("cannot remove committed log entry")};
   }
 
   for (uint64_t i = index + 1; i <= last_index_; i++) {
@@ -194,17 +195,17 @@ Status<uint64_t> Log::Truncate(uint64_t index) {
   last_index_ = std::min(index, last_index_);
   auto res = Get(last_index_);
   if (!res.ok()) {
-    return OkWithValue(uint64_t(0));
+    return {uint64_t(0)};
   }
   last_term_ = res.value_->term();
-  return OkWithValue(last_index_);
+  return {last_index_};
 }
 
 Status<std::tuple<uint64_t, std::string>> Log::LoadTerm() {
   std::string v;
   auto ok = kv_->Get("term", &v);
-  if (!ok.ok()) {
-    return OkWithValue(std::make_tuple(uint64_t(0), std::string()));
+  if (!ok) {
+    return {std::make_tuple(uint64_t(0), std::string())};
   }
   uint64_t term = 0;
   int n = sizeof(term);
@@ -212,10 +213,10 @@ Status<std::tuple<uint64_t, std::string>> Log::LoadTerm() {
   char *buf = reinterpret_cast<char *>(&(v[0]));
   memcpy(static_cast<void *>(&term), buf, n);
   ok = kv_->Get("voted_for", &v);
-  if (!ok.ok()) {
-    return OkWithValue(std::make_tuple(term, std::string()));
+  if (!ok) {
+    return {std::make_tuple(term, std::string())};
   }
-  return OkWithValue(std::make_tuple(term, v));
+  return {std::make_tuple(term, v)};
 }
 
 Status<nullptr_t> Log::SaveTerm(uint64_t term, std::string &vote_for) {
@@ -234,7 +235,7 @@ Status<nullptr_t> Log::SaveTerm(uint64_t term, std::string &vote_for) {
   } else {
     kv_->Set("voted_for", vote_for);
   }
-  return OkWithValue(nullptr);
+  return {nullptr};
 }
 
 } // namespace toydb::raft

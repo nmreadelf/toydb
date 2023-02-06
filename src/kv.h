@@ -15,7 +15,7 @@ public:
 
   void Delete(const std::string &key);
 
-  Status<std::string *> Get(const std::string &key, std::string *value);
+  bool Get(const std::string &key, std::string *value);
 
   void Set(const std::string &key, const std::string &value);
 
