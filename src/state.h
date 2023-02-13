@@ -12,6 +12,8 @@ namespace toydb {
 class State {
 public:
   virtual Status<std::string> Mutate(const std::string &cmd) = 0;
+
+  virtual Status<std::string> Read(const std::string &cmd) = 0;
 };
 
 class KvState : public State {

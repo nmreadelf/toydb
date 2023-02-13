@@ -3,13 +3,17 @@
 //
 
 #pragma once
+#include "kv.h"
+#include "log.h"
 #include "status.h"
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <variant>
 #include <vector>
+
 // The interval between leader heartbeats, in ticks.
 const uint64_t HEARTBEAT_INTERVAL = 1;
 
@@ -26,26 +30,18 @@ enum RoleState {
   ROLE_STATE_FOLLOWER = 3,
 };
 
+struct Message {};
+
+struct NodeOption {
+  int election_timeout; // follower to candidate timeout
+  Log *log;             // log storage
+};
+
 class Node {
 public:
-  Node(std::string &leader, std::string &vote_for)
-      : leader_(leader), voted_for_(vote_for), leader_seen_ticks_(0),
-        proxy_calls_() {
-    leader_seen_timeout_ =
-        std::rand() % (ELECTION_TIMEOUT_MAX - ELECTION_TIMEOUT_MIN);
-  }
-  Node() : heartbeat_ticks_(0), votes_(1) {
-    election_timeout_ =
-        std::rand() % (ELECTION_TIMEOUT_MAX - ELECTION_TIMEOUT_MIN);
-  }
+  Node(std::string &id);
 
-  Node(std::vector<std::string> &peers, uint64_t last_index_)
-      : heartbeat_ticks_(0), peer_next_index_(), peer_last_index_(), calls_() {
-    for (const auto &p : peers) {
-      peer_next_index_[p] = last_index_ + 1;
-      peer_last_index_[p] = 0;
-    }
-  }
+  Status<bool> Init(const NodeOption &options);
 
 private:
   // Transforms the node into a candidate.
@@ -72,6 +68,7 @@ private:
 
   // for candidate
 private:
+  int InitLog();
   // Transition to follower role.
   // follower error
   Status<bool> BecomeFollower(uint64_t term, std::string &leader);
@@ -117,6 +114,16 @@ private:
   std::map<std::string, uint64_t> peer_last_index_;
   // Any client calls being processed.
   std::vector<Call> calls_;
+
+private:
+  // A raft node
+  std::string id_;
+  std::vector<std::string> peers_;
+  uint64_t term_;
+  Log *log_;
+  RoleState role_;
+  // TODO: clients map
+  NodeOption options_;
 };
-};
-}
+
+} // namespace toydb::raft

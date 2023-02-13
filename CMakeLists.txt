@@ -10,7 +10,7 @@ find_package(absl CONFIG REQUIRED)
 find_package(GTest CONFIG REQUIRED)
 
 # Generated proto sources
-set(proto_files "" src/raft/node/follower.h)
+set(proto_files "")
 function(generate_proto proto_name)
     get_filename_component(_proto "${PROJECT_SOURCE_DIR}/src/proto/${proto_name}.proto" ABSOLUTE)
     get_filename_component(_proto_path "${_proto}" PATH)
@@ -47,7 +47,7 @@ target_link_libraries(toydb_grpc_proto
 add_library(kv "${PROJECT_SOURCE_DIR}/src/kv.cc" "${PROJECT_SOURCE_DIR}/src/kv.h" src/state.cc src/state.h src/status.h)
 target_link_libraries(kv absl::any absl::status)
 
-add_library(raft "${PROJECT_SOURCE_DIR}/src/raft/log.cc" src/status.h src/raft/node/candidate.h src/raft/node/node.h src/raft/node.h)
+add_library(raft "${PROJECT_SOURCE_DIR}/src/raft/log.cc" src/status.h src/raft/node.cc)
 target_link_libraries(raft absl::any toydb_grpc_proto
         gRPC::gpr gRPC::grpc gRPC::grpc++ gRPC::grpc++_alts gRPC::grpc++_reflection
         )
