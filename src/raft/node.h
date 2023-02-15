@@ -68,13 +68,16 @@ private:
 
   // for candidate
 private:
-  int InitLog();
+  Status<bool> InitLog();
   // Transition to follower role.
   // follower error
   Status<bool> BecomeFollower(uint64_t term, std::string &leader);
 
   // Transition to leader role.
   Status<bool> BecomeLeader();
+
+  // Processes a message
+  void Step(::raft::Message *msg);
 
   // // Processes a message.
   // Status<bool> Step(std::string &msg);

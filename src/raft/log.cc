@@ -85,8 +85,7 @@ Status<std::tuple<uint64_t, std::string>> Log::Apply(State *state) {
   }
 
   std::string output;
-  auto res = Get(apply_index_ + 1);
-  if (res.ok()) {
+  if (auto res = Get(apply_index_ + 1); res) {
     apply_index_++;
     apply_term_ = res.value_->term();
     if (!res.value_->command().empty()) {
@@ -109,7 +108,7 @@ Status<uint64_t> Log::Commit(uint64_t index) {
   index = std::max(index, commit_index_);
   if (index != commit_index_) {
     auto res = Get(index);
-    if (!res.ok()) {
+    if (!res) {
       return {Error("Entry at commit index " + std::to_string(index) +
                     " does not exist")};
     }
@@ -137,8 +136,7 @@ bool Log::Has(uint64_t index, uint64_t term) {
     return true;
   }
 
-  auto res = Get(index);
-  if (res.ok()) {
+  if (auto res = Get(index); res) {
     return res.value_->term() == term;
   }
   return false;
@@ -147,8 +145,7 @@ std::shared_ptr<std::vector<std::shared_ptr<Entry>>>
 Log::Range(uint64_t start) {
   auto es = std::make_shared<std::vector<std::shared_ptr<Entry>>>();
   for (uint64_t i : std::ranges::iota_view{start, last_index_ + 1}) {
-    auto res = Get(i);
-    if (res.ok()) {
+    if (auto res = Get(i); res) {
       es->push_back(std::shared_ptr<Entry>(res.value_));
     }
   }
@@ -164,13 +161,11 @@ Status<uint64_t> Log::Splice(uint64_t base, uint64_t base_term,
 
   for (int i = 0; i < entrys.size(); i++) {
     const auto &e = entrys[i];
-    auto res = Get(base + i + 1);
-    if (res.ok()) {
+    if (auto res = Get(base + i + 1); res) {
       if (res.value_->term() == e->term()) {
         continue;
       }
-      auto ok = Truncate(base + i);
-      if (!ok.ok()) {
+      if (auto ok = Truncate(base + i); !ok) {
         return ok;
       }
     }
@@ -194,7 +189,7 @@ Status<uint64_t> Log::Truncate(uint64_t index) {
   }
   last_index_ = std::min(index, last_index_);
   auto res = Get(last_index_);
-  if (!res.ok()) {
+  if (!res) {
     return {uint64_t(0)};
   }
   last_term_ = res.value_->term();

@@ -10,6 +10,9 @@
 #include <string>
 
 using ::grpc::ServerContext;
+using ::raft::Message;
+using ::raft::RaftServer;
+using ::raft::Success;
 
 namespace toydb {
 class RaftServerImpl final : public RaftServer::Service {
@@ -23,12 +26,11 @@ public:
 
   RaftServerImpl() : peers_() {}
 
-  ::grpc::Status Send(::Message *msg);
+  ::grpc::Status Send(::raft::Message *msg);
 
   // below is grpc method
 
-  ::grpc::Status Step(ServerContext *ctx, const ::Message *req,
-                      ::Success *resp);
+  ::grpc::Status Step(ServerContext *ctx, const Message *req, Success *resp);
 
 private:
   std::map<std::string, RaftServerClientImpl> peers_;

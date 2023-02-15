@@ -9,14 +9,14 @@ namespace toydb::raft {
 std::pair<std::shared_ptr<Log>, std::shared_ptr<KvStore>> buildLog() {
   std::shared_ptr<KvStore> s(new KvStore);
   auto res = Log::Build(s);
-  EXPECT_TRUE(res.ok());
+  EXPECT_TRUE(res);
   res.SetMoved();
   return std::make_pair(std::shared_ptr<Log>(res.value_), s);
 }
 
 std::shared_ptr<Log> buildLog(std::shared_ptr<KvStore> &s) {
   auto res = Log::Build(s);
-  EXPECT_TRUE(res.ok());
+  EXPECT_TRUE(res);
   std::shared_ptr<Log> log(res.value_);
   return log;
 }
@@ -41,7 +41,7 @@ TEST(RaftTest, Build) {
   }
   {
     auto res = log->Get(1);
-    EXPECT_TRUE(!res.ok());
+    EXPECT_TRUE(!res);
   }
 }
 
@@ -53,27 +53,27 @@ TEST(RaftTest, Append) {
     e.set_command("1");
     e.set_term(3);
     auto res = log->Append(e);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(res.value_, 1);
   }
   {
     auto res = log->Get(1);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(res.value_->command(), "1");
     EXPECT_EQ(res.value_->term(), 3);
   }
   {
     auto res = log->Get(2);
-    EXPECT_TRUE(!res.ok());
+    EXPECT_TRUE(!res);
   }
   {
     // Append none command
     Entry e;
     e.set_term(3);
     auto res = log->Append(e);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     auto get_res = log->Get(res.value_);
-    EXPECT_TRUE(get_res.ok());
+    EXPECT_TRUE(get_res);
     EXPECT_EQ(get_res.value_->command(), "");
     EXPECT_EQ(get_res.value_->term(), 3);
   }
@@ -95,13 +95,13 @@ TEST(RaftTest, AppendPersistence) {
   std::vector<Entry *> es{&e1, &e2, &e3};
   for (const auto e : es) {
     auto res = log->Append(*e);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     idsx.push_back(res.value_);
   }
   auto log2 = buildLog(s);
   for (const auto i : idsx) {
     auto res = log2->Get(i);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(res.value_->command(), es[i - 1]->command());
     EXPECT_EQ(res.value_->term(), es[i - 1]->term());
   }
@@ -128,18 +128,18 @@ TEST(RaftTest, ApplyTest) {
       auto log = r.first;
       for (const auto e : es) {
         auto res = log->Append(*e);
-        EXPECT_TRUE(res.ok());
+        EXPECT_TRUE(res);
         idsx.push_back(res.value_);
       }
       {
         auto res = log->Commit(3);
-        EXPECT_TRUE(res.ok());
+        EXPECT_TRUE(res);
         EXPECT_EQ(3, res.value_);
       }
       TestState ts;
       {
         auto res = log->Apply(&ts);
-        EXPECT_TRUE(res.ok());
+        EXPECT_TRUE(res);
         EXPECT_EQ(1, std::get<0>(res.value_));
         EXPECT_EQ("1", std::get<1>(res.value_));
         EXPECT_EQ(std::vector<std::string>{e1_cmd}, ts.List());
@@ -151,7 +151,7 @@ TEST(RaftTest, ApplyTest) {
       }
       {
         auto res = log->Apply(&ts);
-        EXPECT_TRUE(res.ok());
+        EXPECT_TRUE(res);
         EXPECT_EQ(2, std::get<0>(res.value_));
         EXPECT_EQ("", std::get<1>(res.value_));
         EXPECT_EQ(std::vector<std::string>{e1_cmd}, ts.List());
@@ -164,7 +164,7 @@ TEST(RaftTest, ApplyTest) {
       {
         Entry e;
         auto res = log->Apply(&ts);
-        EXPECT_TRUE(res.ok());
+        EXPECT_TRUE(res);
         EXPECT_EQ(3, std::get<0>(res.value_));
         EXPECT_EQ("3", std::get<1>(res.value_));
         std::vector<std::string> ee{e1_cmd, e3_cmd};
@@ -177,7 +177,7 @@ TEST(RaftTest, ApplyTest) {
       }
       {
         auto res = log->Apply(&ts);
-        EXPECT_TRUE(res.ok());
+        EXPECT_TRUE(res);
         EXPECT_EQ(0, std::get<0>(res.value_));
         EXPECT_EQ("", std::get<1>(res.value_));
       }
@@ -216,17 +216,17 @@ TEST(RaftTest, ApplyTest) {
 
     for (const auto e : es) {
       auto res = log->Append(*e);
-      EXPECT_TRUE(res.ok());
+      EXPECT_TRUE(res);
       idsx.push_back(res.value_);
     }
     {
       auto res = log->Commit(1);
-      EXPECT_TRUE(res.ok());
+      EXPECT_TRUE(res);
     }
     TestState st;
     {
       auto res = log->Apply(&st);
-      EXPECT_TRUE(res.ok());
+      EXPECT_TRUE(res);
       EXPECT_EQ(1, std::get<0>(res.value_));
       EXPECT_EQ("1", std::get<1>(res.value_));
       auto rr = log->GetApplied();
@@ -236,7 +236,7 @@ TEST(RaftTest, ApplyTest) {
     }
     {
       auto res = log->Apply(&st);
-      EXPECT_TRUE(res.ok());
+      EXPECT_TRUE(res);
       EXPECT_EQ(0, std::get<0>(res.value_));
       EXPECT_EQ("", std::get<1>(res.value_));
       auto rr = log->GetApplied();
@@ -265,12 +265,12 @@ TEST(RaftTest, CommitTest) {
       auto log = r.first;
       for (const auto e : es) {
         auto res = log->Append(*e);
-        EXPECT_TRUE(res.ok());
+        EXPECT_TRUE(res);
         idsx.push_back(res.value_);
       }
       {
         auto res = log->Commit(3);
-        EXPECT_TRUE(res.ok());
+        EXPECT_TRUE(res);
         EXPECT_EQ(3, res.value_);
       }
       auto res = log->GetCommitted();
@@ -292,11 +292,11 @@ TEST(RaftTest, CommitTest) {
 
     for (const auto e : es) {
       auto res = ll->Append(*e);
-      EXPECT_TRUE(res.ok());
+      EXPECT_TRUE(res);
     }
     {
       auto res = ll->Commit(4);
-      EXPECT_TRUE(res.ok());
+      EXPECT_TRUE(res);
       EXPECT_EQ(3, res.value_);
     }
     {
@@ -313,11 +313,11 @@ TEST(RaftTest, CommitTest) {
 
     for (const auto e : es) {
       auto res = ll->Append(*e);
-      EXPECT_TRUE(res.ok());
+      EXPECT_TRUE(res);
     }
     {
       auto res = ll->Commit(2);
-      EXPECT_TRUE(res.ok());
+      EXPECT_TRUE(res);
       EXPECT_EQ(2, res.value_);
     }
     {
@@ -334,11 +334,11 @@ TEST(RaftTest, CommitTest) {
 
     for (const auto e : es) {
       auto res = ll->Append(*e);
-      EXPECT_TRUE(res.ok());
+      EXPECT_TRUE(res);
     }
     {
       auto res = ll->Commit(2);
-      EXPECT_TRUE(res.ok());
+      EXPECT_TRUE(res);
       EXPECT_EQ(2, res.value_);
     }
     {
@@ -348,7 +348,7 @@ TEST(RaftTest, CommitTest) {
     }
     {
       auto res = ll->Commit(1);
-      EXPECT_TRUE(res.ok());
+      EXPECT_TRUE(res);
       EXPECT_EQ(2, res.value_);
     }
     {
@@ -364,24 +364,24 @@ TEST(RaftTest, GetTest) {
   auto log = buildLog(s);
   {
     auto res = log->Get(1);
-    EXPECT_TRUE(!res.ok());
+    EXPECT_TRUE(!res);
   }
   Entry e;
   e.set_term(3);
   e.set_command("1");
   {
     auto res = log->Append(e);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
   {
     auto res = log->Get(1);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(e.term(), res.value_->term());
     EXPECT_EQ(e.command(), res.value_->command());
   }
   {
     auto res = log->Get(2);
-    EXPECT_TRUE(!res.ok());
+    EXPECT_TRUE(!res);
   }
 }
 
@@ -390,14 +390,14 @@ TEST(RaftTest, HasTest) {
   auto log = buildLog(s);
   {
     auto res = log->Get(1);
-    EXPECT_TRUE(!res.ok());
+    EXPECT_TRUE(!res);
   }
   Entry e;
   e.set_term(2);
   e.set_command("1");
   {
     auto res = log->Append(e);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
   {
     EXPECT_TRUE(log->Has(1, 2));
@@ -420,7 +420,7 @@ TEST(RaftTest, RangeTest) {
     for (const auto &c : cmds) {
       e.set_command(c);
       auto res = log->Append(e);
-      EXPECT_TRUE(res.ok());
+      EXPECT_TRUE(res);
     }
   }
   {
@@ -440,42 +440,42 @@ TEST(RaftTest, LoadSaveTermTest) {
     auto log = buildLog(r.second);
     {
       auto res = log->LoadTerm();
-      EXPECT_TRUE(res.ok());
+      EXPECT_TRUE(res);
       EXPECT_EQ(0, std::get<0>(res.value_));
       EXPECT_EQ("", std::get<1>(res.value_));
     }
     std::string a("a");
     auto res = log->SaveTerm(1, a);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
   {
     auto log = buildLog(r.second);
     {
       auto res = log->LoadTerm();
-      EXPECT_TRUE(res.ok());
+      EXPECT_TRUE(res);
       EXPECT_EQ(1, std::get<0>(res.value_));
       EXPECT_EQ("a", std::get<1>(res.value_));
     }
     std::string a("c");
     auto res = log->SaveTerm(3, a);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
   {
     auto log = buildLog(r.second);
     {
       auto res = log->LoadTerm();
-      EXPECT_TRUE(res.ok());
+      EXPECT_TRUE(res);
       EXPECT_EQ(3, std::get<0>(res.value_));
       EXPECT_EQ("c", std::get<1>(res.value_));
     }
     std::string a;
     auto res = log->SaveTerm(0, a);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
   {
     auto log = buildLog(r.second);
     auto res = log->LoadTerm();
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(0, std::get<0>(res.value_));
     EXPECT_EQ("", std::get<1>(res.value_));
   }
@@ -489,21 +489,21 @@ TEST(RaftTest, SpliceTest) {
   e1.set_command("1");
   {
     auto res = log->Append(e1);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
   Entry e2;
   e2.set_term(2);
   e2.set_command("2");
   {
     auto res = log->Append(e2);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
   Entry e3;
   e3.set_term(3);
   e3.set_command("3");
   {
     auto res = log->Append(e3);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
   Entry e4;
   e4.set_term(4);
@@ -512,13 +512,13 @@ TEST(RaftTest, SpliceTest) {
   {
     std::vector<Entry *> ts{&e3, &e4};
     auto res = log->Splice(2, 2, ts);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(4, res.value_);
   }
   std::vector<Entry *> es{&e1, &e2, &e3, &e4};
   for (int i = 0; i < es.size(); i++) {
     auto res = log->Get(i + 1);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(es[i]->term(), res.value_->term());
     EXPECT_EQ(es[i]->command(), res.value_->command());
   }
@@ -544,7 +544,7 @@ TEST(RaftTest, SpliceAllTest) {
   std::vector<Entry *> es{&e1, &e2, &e3};
   for (auto e : es) {
     auto res = log->Append(*e);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
   Entry e4;
   e4.set_term(4);
@@ -555,14 +555,14 @@ TEST(RaftTest, SpliceAllTest) {
   {
     std::vector<Entry *> ts{&e4, &e4b};
     auto res = log->Splice(0, 0, ts);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(2, res.value_);
   }
 
   es = {&e4, &e4b};
   for (int i = 0; i < es.size(); i++) {
     auto res = log->Get(i + 1);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(es[i]->term(), res.value_->term());
     EXPECT_EQ(es[i]->command(), res.value_->command());
   }
@@ -586,7 +586,7 @@ TEST(RaftTest, SpliceAppendTest) {
   std::vector<Entry *> es{&e1, &e2};
   for (auto e : es) {
     auto res = log->Append(*e);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
   Entry e3;
   e3.set_term(3);
@@ -597,14 +597,14 @@ TEST(RaftTest, SpliceAppendTest) {
   {
     es = {&e3, &e4};
     auto res = log->Splice(2, 2, es);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(4, res.value_);
   }
 
   es = {&e1, &e2, &e3, &e4};
   for (int i = 0; i < es.size(); i++) {
     auto res = log->Get(i + 1);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(es[i]->term(), res.value_->term());
     EXPECT_EQ(es[i]->command(), res.value_->command());
   }
@@ -628,7 +628,7 @@ TEST(RaftTest, SpliceBaseMissingTest) {
   std::vector<Entry *> es{&e1, &e2};
   for (auto e : es) {
     auto res = log->Append(*e);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
   Entry e4;
   e4.set_term(4);
@@ -636,12 +636,12 @@ TEST(RaftTest, SpliceBaseMissingTest) {
   {
     std::vector<Entry *> ts{&e4};
     auto res = log->Splice(3, 3, ts);
-    EXPECT_FALSE(res.ok());
+    EXPECT_FALSE(res);
   }
 
   for (int i = 0; i < es.size(); i++) {
     auto res = log->Get(i + 1);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(es[i]->term(), res.value_->term());
     EXPECT_EQ(es[i]->command(), res.value_->command());
   }
@@ -665,7 +665,7 @@ TEST(RaftTest, SpliceBaseTermConflictTest) {
   std::vector<Entry *> es{&e1, &e2};
   for (auto e : es) {
     auto res = log->Append(*e);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
   Entry e4;
   e4.set_term(4);
@@ -673,17 +673,17 @@ TEST(RaftTest, SpliceBaseTermConflictTest) {
   {
     std::vector<Entry *> ts{&e4};
     auto res = log->Splice(3, 3, ts);
-    EXPECT_FALSE(res.ok());
+    EXPECT_FALSE(res);
   }
   {
     std::vector<Entry *> ts{&e4};
     auto res = log->Splice(2, 0, ts);
-    EXPECT_FALSE(res.ok());
+    EXPECT_FALSE(res);
   }
 
   for (int i = 0; i < es.size(); i++) {
     auto res = log->Get(i + 1);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(es[i]->term(), res.value_->term());
     EXPECT_EQ(es[i]->command(), res.value_->command());
   }
@@ -712,7 +712,7 @@ TEST(RaftTest, SpliceConflictTest) {
   std::vector<Entry *> es{&e1, &e2, &e3, &e4};
   for (auto e : es) {
     auto res = log->Append(*e);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
 
   Entry e3b;
@@ -725,13 +725,13 @@ TEST(RaftTest, SpliceConflictTest) {
   es = {&e3b, &e3c};
   {
     auto res = log->Splice(1, 1, es);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(3, res.value_);
   }
   es = {&e1, &e3b, &e3c};
   for (int i = 0; i < es.size(); i++) {
     auto res = log->Get(i + 1);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(es[i]->term(), res.value_->term());
     EXPECT_EQ(es[i]->command(), res.value_->command());
   }
@@ -757,19 +757,19 @@ TEST(RaftTest, SpliceOverlapTest) {
   std::vector<Entry *> es{&e1, &e2, &e3};
   for (auto e : es) {
     auto res = log->Append(*e);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
 
   es = {&e2};
   {
     auto res = log->Splice(1, 1, es);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(3, res.value_);
   }
   es = {&e1, &e2, &e3};
   for (int i = 0; i < es.size(); i++) {
     auto res = log->Get(i + 1);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(es[i]->term(), res.value_->term());
     EXPECT_EQ(es[i]->command(), res.value_->command());
   }
@@ -795,23 +795,23 @@ TEST(RaftTest, TruncateTest) {
   std::vector<Entry *> es{&e1, &e2, &e3};
   for (auto e : es) {
     auto res = log->Append(*e);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
   {
     auto res = log->Truncate(2);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(2, res.value_);
   }
   es = {&e1, &e2};
   for (int i = 0; i < es.size(); i++) {
     auto res = log->Get(i + 1);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(es[i]->term(), res.value_->term());
     EXPECT_EQ(es[i]->command(), res.value_->command());
   }
   {
     auto res = log->Get(3);
-    EXPECT_FALSE(res.ok());
+    EXPECT_FALSE(res);
   }
   {
     auto res = log->GetLast();
@@ -835,22 +835,22 @@ TEST(RaftTest, TruncateBeyondTest) {
   std::vector<Entry *> es{&e1, &e2, &e3};
   for (auto e : es) {
     auto res = log->Append(*e);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
   {
     auto res = log->Truncate(4);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(3, res.value_);
   }
   for (int i = 0; i < es.size(); i++) {
     auto res = log->Get(i + 1);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(es[i]->term(), res.value_->term());
     EXPECT_EQ(es[i]->command(), res.value_->command());
   }
   {
     auto res = log->Get(4);
-    EXPECT_FALSE(res.ok());
+    EXPECT_FALSE(res);
   }
   {
     auto res = log->GetLast();
@@ -874,19 +874,19 @@ TEST(RaftTest, TruncateCommittedTest) {
   std::vector<Entry *> es{&e1, &e2, &e3};
   for (auto e : es) {
     auto res = log->Append(*e);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
   {
     auto res = log->Commit(2);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
   {
     auto res = log->Truncate(1);
-    EXPECT_FALSE(res.ok());
+    EXPECT_FALSE(res);
   }
   {
     auto res = log->Truncate(2);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(2, res.value_);
   }
 }
@@ -906,17 +906,17 @@ TEST(RaftTest, TruncateZeroTest) {
   std::vector<Entry *> es{&e1, &e2, &e3};
   for (auto e : es) {
     auto res = log->Append(*e);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
   }
   {
     auto res = log->Truncate(0);
-    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res);
     EXPECT_EQ(0, res.value_);
   }
   es = {&e1, &e2};
   for (int i = 0; i < es.size(); i++) {
     auto res = log->Get(i + 1);
-    EXPECT_FALSE(res.ok());
+    EXPECT_FALSE(res);
   }
 }
 

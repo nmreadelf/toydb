@@ -32,6 +32,8 @@ public:
 
   Status<std::string> Mutate(const std::string &cmd) override;
 
+  Status<std::string> Read(const std::string &cmd);
+
   std::vector<std::string> List();
 
 private:

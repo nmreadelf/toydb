@@ -16,8 +16,8 @@ namespace toydb {
   return iter->second.Step(msg);
 }
 
-Status RaftServerImpl::Step(ServerContext *ctx, const ::Message *req,
-                            ::Success *resp) {
+Status RaftServerImpl::Step(ServerContext *ctx, const Message *req,
+                            Success *resp) {
   return Status::OK;
 }
 } // namespace toydb

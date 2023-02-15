@@ -23,5 +23,16 @@ Status<std::string> TestState::Mutate(const std::string &cmd) {
   return {cmd};
 }
 
+Status<std::string> TestState::Read(const std::string &cmd) {
+  if (cmd.size() != 1) {
+    return {Error("Read payload must be 1 byte")};
+  }
+  int32_t idx = uint32_t(cmd[0]);
+  if (idx >= cmds_.size()) {
+    return {"0"};
+  }
+  return {cmds_[idx]};
+}
+
 std::vector<std::string> TestState::List() { return cmds_; }
 } // namespace toydb

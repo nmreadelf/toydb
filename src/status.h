@@ -18,6 +18,8 @@ struct Error {
 
     return *this;
   }
+
+  explicit Error(const Error &e) = default;
 };
 
 template <typename T> struct Status {
@@ -46,9 +48,9 @@ public:
     }
   }
 
-  // explicit Status(Error e) : state_(kError), error_(std::move(e)) {}
+  // Status(Error e) : state_(kError), error_(std::move(e)) {}
 
-  // explicit Status(const Error &e) : state_(kError), error_(e) {}
+  Status(Error &e) : state_(kError), error_(e) {}
 
   Status(Error &&e) : state_(kError), error_(std::move(e)) {}
 
@@ -67,6 +69,21 @@ public:
     }
     state_ = kError;
     new (&error_) Error(std::move(e));
+
+    return *this;
+  }
+
+  Status &operator=(const Error &e) {
+    switch (state_) {
+    case kOk:
+      value_.~T();
+      break;
+    case kError:
+      error_.~Error();
+      break;
+    }
+    state_ = kError;
+    new (&error_) Error(e);
 
     return *this;
   }
@@ -145,6 +162,8 @@ public:
   }
 
   bool ok() { return state_ == kOk; }
+
+  explicit operator bool() const { return state_ == kOk; }
 
   void SetMoved() { state_ == kMoved; }
 };
