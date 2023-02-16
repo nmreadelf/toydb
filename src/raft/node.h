@@ -76,8 +76,6 @@ private:
   // Transition to leader role.
   Status<bool> BecomeLeader();
 
-  // Processes a message
-  void Step(::raft::Message *msg);
 
   // // Processes a message.
   // Status<bool> Step(std::string &msg);
