@@ -97,8 +97,7 @@ Status<std::tuple<uint64_t, std::string>> Log::Apply(State *state) {
   std::string v;
   int n = sizeof(apply_index_);
   v.resize(n);
-  char *buf = reinterpret_cast<char *>(&(v[0]));
-  memcpy(buf, static_cast<void *>(&apply_index_), n);
+  memcpy(v.data(), static_cast<void *>(&apply_index_), n);
   kv_->Set("apply_index", v);
   return {std::make_tuple(apply_index_, std::move(output))};
 }
@@ -204,9 +203,7 @@ Status<std::tuple<uint64_t, std::string>> Log::LoadTerm() {
   }
   uint64_t term = 0;
   int n = sizeof(term);
-  v.resize(n);
-  char *buf = reinterpret_cast<char *>(&(v[0]));
-  memcpy(static_cast<void *>(&term), buf, n);
+  memcpy(static_cast<void *>(&term), v.data(), n);
   ok = kv_->Get("voted_for", &v);
   if (!ok) {
     return {std::make_tuple(term, std::string())};
@@ -219,8 +216,7 @@ Status<nullptr_t> Log::SaveTerm(uint64_t term, std::string &vote_for) {
     std::string v;
     int n = sizeof(term);
     v.resize(n);
-    char *buf = reinterpret_cast<char *>(&(v[0]));
-    memcpy(buf, static_cast<void *>(&term), n);
+    memcpy(v.data(), static_cast<void *>(&term), n);
     kv_->Set("term", v);
   } else {
     kv_->Delete("term");
