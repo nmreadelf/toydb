@@ -4,6 +4,7 @@
 
 #include "log.h"
 #include <cstdint>
+#include <queue>
 #include <ranges>
 
 namespace toydb::raft {
