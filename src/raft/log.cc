@@ -97,8 +97,8 @@ Status<std::tuple<uint64_t, std::string>> Log::Apply(State *state) {
 
   std::string v;
   int n = sizeof(apply_index_);
-  v.resize(n);
-  memcpy(v.data(), static_cast<void *>(&apply_index_), n);
+  v.reserve(n);
+  v.append(reinterpret_cast<char *>(&apply_index_), n);
   kv_->Set("apply_index", v);
   return {std::make_tuple(apply_index_, std::move(output))};
 }
@@ -216,8 +216,8 @@ Status<std::nullptr_t> Log::SaveTerm(uint64_t term, std::string &vote_for) {
   if (term > 0) {
     std::string v;
     int n = sizeof(term);
-    v.resize(n);
-    memcpy(v.data(), static_cast<void *>(&term), n);
+    v.reserve(n);
+    v.append(reinterpret_cast<char *>(&term), n);
     kv_->Set("term", v);
   } else {
     kv_->Delete("term");
