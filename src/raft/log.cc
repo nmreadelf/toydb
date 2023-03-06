@@ -212,7 +212,7 @@ Status<std::tuple<uint64_t, std::string>> Log::LoadTerm() {
   return {std::make_tuple(term, v)};
 }
 
-Status<nullptr_t> Log::SaveTerm(uint64_t term, std::string &vote_for) {
+Status<std::nullptr_t> Log::SaveTerm(uint64_t term, std::string &vote_for) {
   if (term > 0) {
     std::string v;
     int n = sizeof(term);

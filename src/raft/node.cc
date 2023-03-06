@@ -37,4 +37,10 @@ Status<bool> Node::InitLog() {
   }
   return {true};
 }
+
+Status<std::nullptr_t> Node::save_term(uint64_t term, std::string &voted_for) {
+  log_->SaveTerm(term, voted_for);
+  term_ = term;
+  return {nullptr};
+}
 } // namespace toydb::raft

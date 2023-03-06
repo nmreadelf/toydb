@@ -55,6 +55,9 @@ private:
 
   Status<bool> Tick();
 
+  // Updates the current term and stores it in the log
+  Status<std::nullptr_t> save_term(uint64_t term, std::string &voted_for);
+
   // The leader, or empty if just initialized,
   std::string leader_;
   // The number of ticks since the last message from the leader.
@@ -75,7 +78,6 @@ private:
 
   // Transition to leader role.
   Status<bool> BecomeLeader();
-
 
   // // Processes a message.
   // Status<bool> Step(std::string &msg);

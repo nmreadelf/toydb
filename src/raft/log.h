@@ -70,7 +70,7 @@ public:
   Status<std::tuple<uint64_t, std::string>> LoadTerm();
 
   // Saves information about the most recent term.
-  Status<nullptr_t> SaveTerm(uint64_t term, std::string &vote_for);
+  Status<std::nullptr_t> SaveTerm(uint64_t term, std::string &vote_for);
 
 private:
   explicit Log(std::shared_ptr<toydb::KvStore> s, uint64_t last_index,
