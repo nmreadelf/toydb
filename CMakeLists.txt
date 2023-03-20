@@ -52,6 +52,11 @@ target_link_libraries(raft absl::any toydb_grpc_proto
         gRPC::gpr gRPC::grpc gRPC::grpc++ gRPC::grpc++_alts gRPC::grpc++_reflection
         )
 
+add_library(sql "${PROJECT_SOURCE_DIR}/src/sql/parser/lexer.cc")
+
+add_executable(sql_test "${PROJECT_SOURCE_DIR}/src/sql/parser/lexer.cc" "${PROJECT_SOURCE_DIR}/src/sql/parser/lexer_test.cc")
+target_link_libraries(sql_test sql)
+
 add_executable(kv_test "${PROJECT_SOURCE_DIR}/src/kv_test.cc" )
 target_link_libraries(kv_test kv GTest::gtest GTest::gtest_main absl::any absl::base absl::status)
 
