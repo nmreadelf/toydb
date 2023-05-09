@@ -55,9 +55,9 @@ target_link_libraries(raft absl::any toydb_grpc_proto
 add_library(sql "${PROJECT_SOURCE_DIR}/src/sql/parser/lexer.cc")
 
 add_executable(sql_test "${PROJECT_SOURCE_DIR}/src/sql/parser/lexer.cc" "${PROJECT_SOURCE_DIR}/src/sql/parser/lexer_test.cc")
-target_link_libraries(sql_test sql)
+target_link_libraries(sql_test sql GTest::gtest GTest::gtest_main)
 
-add_executable(kv_test "${PROJECT_SOURCE_DIR}/src/kv_test.cc" )
+add_executable(kv_test "${PROJECT_SOURCE_DIR}/src/kv_test.cc")
 target_link_libraries(kv_test kv GTest::gtest GTest::gtest_main absl::any absl::base absl::status)
 
 add_executable(raftlog_test "${PROJECT_SOURCE_DIR}/src/raft/log_test.cc")
